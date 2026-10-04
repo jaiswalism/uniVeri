@@ -1,0 +1,404 @@
+{
+  "specVersion": "2026-10-04",
+  "generatedAt": "2026-10-03T22:51:07.937Z",
+  "workloads": {
+    "W1": {
+      "C1": {
+        "totalTrials": 100,
+        "successTrials": 100,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 49.517,
+          "stdDev": 3.775,
+          "ci95": [
+            46.817,
+            52.217
+          ],
+          "median": 48.39,
+          "p95": 58.61
+        }
+      },
+      "C2": {
+        "totalTrials": 100,
+        "successTrials": 100,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 52.482,
+          "stdDev": 3.418,
+          "ci95": [
+            50.037,
+            54.926
+          ],
+          "median": 51.02,
+          "p95": 63.55
+        }
+      },
+      "D": {
+        "totalTrials": 100,
+        "successTrials": 100,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 23.147,
+          "stdDev": 2.13,
+          "ci95": [
+            21.624,
+            24.671
+          ],
+          "median": 22.64,
+          "p95": 28.06
+        }
+      }
+    },
+    "W2": {
+      "C1": {
+        "totalTrials": 1000,
+        "successTrials": 1000,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 51.301,
+          "stdDev": 2.561,
+          "ci95": [
+            49.469,
+            53.132
+          ],
+          "median": 49.73,
+          "p95": 62.66
+        }
+      },
+      "C2": {
+        "totalTrials": 1000,
+        "successTrials": 1000,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 59.562,
+          "stdDev": 4.124,
+          "ci95": [
+            56.612,
+            62.512
+          ],
+          "median": 57.44,
+          "p95": 78.88
+        }
+      },
+      "D": {
+        "totalTrials": 1000,
+        "successTrials": 1000,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 23.746,
+          "stdDev": 2.314,
+          "ci95": [
+            22.091,
+            25.402
+          ],
+          "median": 22.3,
+          "p95": 31.18
+        }
+      }
+    },
+    "W3": {
+      "C1": {
+        "totalTrials": 5000,
+        "successTrials": 5000,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 58.984,
+          "stdDev": 2.834,
+          "ci95": [
+            56.957,
+            61.011
+          ],
+          "median": 57.63,
+          "p95": 73.77
+        }
+      },
+      "C2": {
+        "totalTrials": 5000,
+        "successTrials": 5000,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 79.284,
+          "stdDev": 4.058,
+          "ci95": [
+            76.381,
+            82.187
+          ],
+          "median": 79.08,
+          "p95": 106.76
+        }
+      },
+      "D": {
+        "totalTrials": 5000,
+        "successTrials": 5000,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 22.057,
+          "stdDev": 1.169,
+          "ci95": [
+            21.221,
+            22.893
+          ],
+          "median": 21.58,
+          "p95": 25.57
+        }
+      }
+    },
+    "W4": {
+      "C1": {
+        "totalTrials": 100,
+        "successTrials": 100,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 47.141,
+          "stdDev": 0.812,
+          "ci95": [
+            46.56,
+            47.722
+          ],
+          "median": 46.35,
+          "p95": 53.14
+        }
+      },
+      "C2": {
+        "totalTrials": 100,
+        "successTrials": 100,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 49.657,
+          "stdDev": 1.315,
+          "ci95": [
+            48.716,
+            50.598
+          ],
+          "median": 49.17,
+          "p95": 55.87
+        }
+      },
+      "D": {
+        "totalTrials": 100,
+        "successTrials": 100,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 20.612,
+          "stdDev": 0.235,
+          "ci95": [
+            20.444,
+            20.78
+          ],
+          "median": 20.5,
+          "p95": 22.77
+        }
+      }
+    },
+    "W5": {
+      "C1": {
+        "totalTrials": 500,
+        "successTrials": 500,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 47.298,
+          "stdDev": 0.91,
+          "ci95": [
+            46.647,
+            47.949
+          ],
+          "median": 46.6,
+          "p95": 51.85
+        }
+      },
+      "C2": {
+        "totalTrials": 500,
+        "successTrials": 500,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 51.626,
+          "stdDev": 0.781,
+          "ci95": [
+            51.067,
+            52.185
+          ],
+          "median": 50.93,
+          "p95": 58.75
+        }
+      },
+      "D": {
+        "totalTrials": 500,
+        "successTrials": 500,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 20.551,
+          "stdDev": 0.366,
+          "ci95": [
+            20.289,
+            20.813
+          ],
+          "median": 20.25,
+          "p95": 22.96
+        }
+      }
+    },
+    "W6": {
+      "C1": {
+        "totalTrials": 50,
+        "successTrials": 50,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 46.46,
+          "stdDev": 0.901,
+          "ci95": [
+            45.816,
+            47.104
+          ],
+          "median": 46.04,
+          "p95": 49.88
+        }
+      },
+      "C2": {
+        "totalTrials": 50,
+        "successTrials": 50,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 48.985,
+          "stdDev": 1.449,
+          "ci95": [
+            47.948,
+            50.022
+          ],
+          "median": 48.25,
+          "p95": 53.76
+        }
+      },
+      "D": {
+        "totalTrials": 50,
+        "successTrials": 50,
+        "successRatePct": 100,
+        "latencyMs": {
+          "mean": 20.426,
+          "stdDev": 0.569,
+          "ci95": [
+            20.02,
+            20.833
+          ],
+          "median": 20.32,
+          "p95": 22.13
+        }
+      }
+    }
+  },
+  "failureScenarios": {
+    "C1_SOLE_LOG_UNAVAILABLE": {
+      "architecture": "C1",
+      "description": "Sole log unavailable (in-process endpoint failure)",
+      "publicationTrialCount": 100,
+      "outcomes": {
+        "SUCCESS": 0,
+        "TIMEOUT": 0,
+        "INFRASTRUCTURE_ERROR": 100,
+        "INSUFFICIENT_EVIDENCE": 0
+      },
+      "retrievalQueryCount": 10,
+      "retrievalOutcome": {
+        "evidenceAvailable": 0,
+        "evidenceFresh": 0,
+        "publishedCount": 0,
+        "staleCount": 0,
+        "insufficientCount": 10
+      }
+    },
+    "C1_SOLE_LOG_OMISSION": {
+      "architecture": "C1",
+      "description": "Sole log acknowledges but omits inclusion evidence",
+      "publicationTrialCount": 100,
+      "outcomes": {
+        "SUCCESS": 0,
+        "TIMEOUT": 0,
+        "INFRASTRUCTURE_ERROR": 0,
+        "INSUFFICIENT_EVIDENCE": 100
+      },
+      "retrievalQueryCount": 10,
+      "retrievalOutcome": {
+        "evidenceAvailable": 10,
+        "evidenceFresh": 0,
+        "publishedCount": 0,
+        "staleCount": 10,
+        "insufficientCount": 0
+      }
+    },
+    "C2_ONE_LOG_UNAVAILABLE": {
+      "architecture": "C2",
+      "description": "Log Alpha unavailable; Beta and Gamma healthy (2/3 quorum)",
+      "publicationTrialCount": 100,
+      "outcomes": {
+        "SUCCESS": 100,
+        "TIMEOUT": 0,
+        "INFRASTRUCTURE_ERROR": 0,
+        "INSUFFICIENT_EVIDENCE": 0
+      },
+      "retrievalQueryCount": 10,
+      "retrievalOutcome": {
+        "evidenceAvailable": 10,
+        "evidenceFresh": 10,
+        "publishedCount": 10,
+        "staleCount": 0,
+        "insufficientCount": 0
+      }
+    },
+    "C2_ONE_LOG_OMISSION": {
+      "architecture": "C2",
+      "description": "Log Alpha omits inclusion; Beta and Gamma healthy (2/3 quorum)",
+      "publicationTrialCount": 100,
+      "outcomes": {
+        "SUCCESS": 100,
+        "TIMEOUT": 0,
+        "INFRASTRUCTURE_ERROR": 0,
+        "INSUFFICIENT_EVIDENCE": 0
+      },
+      "retrievalQueryCount": 10,
+      "retrievalOutcome": {
+        "evidenceAvailable": 10,
+        "evidenceFresh": 10,
+        "publishedCount": 10,
+        "staleCount": 0,
+        "insufficientCount": 0
+      }
+    },
+    "D_ENDPOINT_UNAVAILABLE": {
+      "architecture": "D",
+      "description": "Blockchain endpoint unavailable (in-process mock fault)",
+      "publicationTrialCount": 100,
+      "outcomes": {
+        "SUCCESS": 0,
+        "TIMEOUT": 0,
+        "INFRASTRUCTURE_ERROR": 100,
+        "INSUFFICIENT_EVIDENCE": 0
+      },
+      "retrievalQueryCount": 10,
+      "retrievalOutcome": {
+        "evidenceAvailable": 0,
+        "evidenceFresh": 0,
+        "publishedCount": 0,
+        "staleCount": 0,
+        "insufficientCount": 10
+      }
+    },
+    "D_PROCESSING_DELAYED": {
+      "architecture": "D",
+      "description": "Transaction processing delayed past deadline",
+      "publicationTrialCount": 100,
+      "outcomes": {
+        "SUCCESS": 0,
+        "TIMEOUT": 100,
+        "INFRASTRUCTURE_ERROR": 0,
+        "INSUFFICIENT_EVIDENCE": 0
+      },
+      "retrievalQueryCount": 10,
+      "retrievalOutcome": {
+        "evidenceAvailable": 0,
+        "evidenceFresh": 0,
+        "publishedCount": 0,
+        "staleCount": 0,
+        "insufficientCount": 10
+      }
+    }
+  }
+}

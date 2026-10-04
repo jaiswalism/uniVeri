@@ -1,0 +1,9 @@
+test_case_id,description,architecture,expected_auth,observed_auth,expected_pub,observed_pub,expected_status,observed_status,pass_fail
+TC-1,"Unmodified certificate with sufficient publication evidence",C1,AUTHENTIC,AUTHENTIC,PUBLISHED,PUBLISHED,NO_REVOCATION_OBSERVED,NO_REVOCATION_OBSERVED,PASS
+TC-2,"Modified certificate (Tampered academic claim)",C1,NOT_AUTHENTIC,NOT_AUTHENTIC,PUBLISHED,PUBLISHED,NO_REVOCATION_OBSERVED,NO_REVOCATION_OBSERVED,PASS
+TC-3,"Invalid Merkle proof path",C1,NOT_AUTHENTIC,NOT_AUTHENTIC,PUBLISHED,PUBLISHED,NO_REVOCATION_OBSERVED,NO_REVOCATION_OBSERVED,PASS
+TC-4,"Invalid institution signature (Evaluated with configured trusted key)",C1,NOT_AUTHENTIC,NOT_AUTHENTIC,INSUFFICIENT_EVIDENCE,INSUFFICIENT_EVIDENCE,STATUS_UNKNOWN,STATUS_UNKNOWN,PASS
+TC-5,"Valid certificate with unavailable/invalid publication evidence",C1,AUTHENTIC,AUTHENTIC,INSUFFICIENT_EVIDENCE,INSUFFICIENT_EVIDENCE,STATUS_UNKNOWN,STATUS_UNKNOWN,PASS
+TC-6,"Genuinely signed stale checkpoint (Age > 300s maxCheckpointAgeSec)",C1,AUTHENTIC,AUTHENTIC,STALE_EVIDENCE,STALE_EVIDENCE,STATUS_UNKNOWN,STATUS_UNKNOWN,PASS
+TC-7,"Verified institution-authorized revocation on blockchain registry (EVM executed)",D,AUTHENTIC,AUTHENTIC,PUBLISHED,PUBLISHED,REVOKED_AS_OF_EVIDENCE,REVOKED_AS_OF_EVIDENCE,PASS
+TC-8,"Two C2 issuance proofs with 1 log down (safe uncertainty: STATUS_UNKNOWN)",C2,AUTHENTIC,AUTHENTIC,PUBLISHED,PUBLISHED,STATUS_UNKNOWN,STATUS_UNKNOWN,PASS

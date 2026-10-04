@@ -1,0 +1,99 @@
+{
+  "specVersion": "2026-10-04",
+  "researchScopeAuthority": "Academic_Certificate_Verification_Frozen_Research_Plan.md",
+  "hashAlgorithm": "Keccak256",
+  "signatureAlgorithm": "ECDSA (secp256k1)",
+  "canonicalJsonStandard": "RFC 8785",
+  "schemaVersion": "1.0.0",
+  "workloads": [
+    {
+      "id": "W1",
+      "N": 1000,
+      "K": 100,
+      "B": 10,
+      "description": "Small baseline"
+    },
+    {
+      "id": "W2",
+      "N": 10000,
+      "K": 100,
+      "B": 100,
+      "description": "N-scaling with fixed K=100"
+    },
+    {
+      "id": "W3",
+      "N": 50000,
+      "K": 100,
+      "B": 500,
+      "description": "Large N with small K=100 (B=500)"
+    },
+    {
+      "id": "W4",
+      "N": 10000,
+      "K": 1000,
+      "B": 10,
+      "description": "Moderate workload for failure experiments"
+    },
+    {
+      "id": "W5",
+      "N": 50000,
+      "K": 1000,
+      "B": 50,
+      "description": "Large workload with medium batch K=1000"
+    },
+    {
+      "id": "W6",
+      "N": 50000,
+      "K": 10000,
+      "B": 5,
+      "description": "Large workload with large batch K=10000"
+    }
+  ],
+  "failureScenarios": [
+    {
+      "id": "C1_SOLE_LOG_UNAVAILABLE",
+      "arch": "C1",
+      "desc": "Sole log unavailable (in-process endpoint failure)"
+    },
+    {
+      "id": "C1_SOLE_LOG_OMISSION",
+      "arch": "C1",
+      "desc": "Sole log acknowledges but omits inclusion evidence"
+    },
+    {
+      "id": "C2_ONE_LOG_UNAVAILABLE",
+      "arch": "C2",
+      "desc": "Log Alpha unavailable; Beta and Gamma healthy (2/3 quorum)"
+    },
+    {
+      "id": "C2_ONE_LOG_OMISSION",
+      "arch": "C2",
+      "desc": "Log Alpha omits inclusion; Beta and Gamma healthy (2/3 quorum)"
+    },
+    {
+      "id": "D_ENDPOINT_UNAVAILABLE",
+      "arch": "D",
+      "desc": "Blockchain endpoint unavailable (in-process mock fault)"
+    },
+    {
+      "id": "D_PROCESSING_DELAYED",
+      "arch": "D",
+      "desc": "Transaction processing delayed past deadline"
+    }
+  ],
+  "totalWorkloadRuns": 240,
+  "totalScheduledBatchTrials": 20850,
+  "repetitionsPerRun": 10,
+  "quorumRequirement": "2-of-3",
+  "retryPolicy": {
+    "maxAttempts": 3,
+    "deadlineMs": 1000,
+    "initialBackoffMs": 10,
+    "backoffMultiplier": 2
+  },
+  "gasMeasuredViaEVM": true,
+  "evmContractAddress": "0xe70f935c32dA4dB13e7876795f1e175465e6458e",
+  "evmChainId": 31337,
+  "executionEnvironment": "Hardhat EVM (Solidity 0.8.24 viaIR) / Node.js v22",
+  "timestamp": "2026-10-03T22:21:50.406Z"
+}

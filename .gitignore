@@ -1,0 +1,18 @@
+# Specified exclusions
+05-experiment-results-specification.md
+Academic_Certificate_Verification_Frozen_Research_Plan.md
+
+# Dependencies
+node_modules/
+
+# Hardhat & build artifacts
+artifacts/
+cache/
+typechain-types/
+dist/
+dist-ui/
+
+# Environment and logs
+.env
+*.log
+.DS_Store

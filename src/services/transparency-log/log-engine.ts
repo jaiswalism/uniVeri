@@ -152,10 +152,14 @@ export class TransparencyLogEngine {
   }
 
   private isCensored(batchContentId: string): boolean {
-    return Boolean(
-      this.failureOptions.censorAll ||
-        (this.failureOptions.censorContentIds && this.failureOptions.censorContentIds.has(batchContentId))
-    );
+    const idLower = batchContentId.toLowerCase();
+    if (this.failureOptions.censorAll) return true;
+    if (this.failureOptions.censorContentIds) {
+      for (const id of this.failureOptions.censorContentIds) {
+        if (id.toLowerCase() === idLower) return true;
+      }
+    }
+    return false;
   }
 
   private append(entry: Omit<LogEntry, "entryIndex">): number {
@@ -195,7 +199,8 @@ export class TransparencyLogEngine {
       return { entryIndex: -1, acknowledgedAtMs: performance.now(), omitted: true };
     }
 
-    const existing = this.issuanceIndex.get(batchContentId);
+    const normContentId = batchContentId.toLowerCase();
+    const existing = this.issuanceIndex.get(normContentId);
     if (existing !== undefined) {
       return { entryIndex: existing, acknowledgedAtMs: performance.now(), omitted: false };
     }
@@ -208,7 +213,7 @@ export class TransparencyLogEngine {
       signedManifest,
       receivedAt: this.clockSec(),
     });
-    this.issuanceIndex.set(batchContentId, entryIndex);
+    this.issuanceIndex.set(normContentId, entryIndex);
     return { entryIndex, acknowledgedAtMs: performance.now(), omitted: false };
   }
 
@@ -225,6 +230,7 @@ export class TransparencyLogEngine {
     if (this.failureOptions.acknowledgeButOmit) {
       return { entryIndex: -1 };
     }
+    const normContentId = rev.batchContentId.toLowerCase();
     const entryIndex = this.append({
       kind: "REVOCATION",
       entryHash: computeRevocationEntryHash(rev),
@@ -233,9 +239,9 @@ export class TransparencyLogEngine {
       signedRevocation: rev,
       receivedAt: this.clockSec(),
     });
-    const list = this.revocationIndexesByContentId.get(rev.batchContentId) ?? [];
+    const list = this.revocationIndexesByContentId.get(normContentId) ?? [];
     list.push(entryIndex);
-    this.revocationIndexesByContentId.set(rev.batchContentId, list);
+    this.revocationIndexesByContentId.set(normContentId, list);
     return { entryIndex };
   }
 
@@ -296,7 +302,8 @@ export class TransparencyLogEngine {
       throw new Error(`Log ${this.logId} omitted inclusion proof on read path`);
     }
 
-    const leafIndex = this.issuanceIndex.get(batchContentId);
+    const normContentId = batchContentId.toLowerCase();
+    const leafIndex = this.issuanceIndex.get(normContentId);
     if (leafIndex === undefined) {
       throw new Error(`Entry with batchContentId ${batchContentId} not found in log ${this.logId}`);
     }
@@ -337,7 +344,7 @@ export class TransparencyLogEngine {
     }
 
     const checkpoint = await this.currentCheckpoint();
-    const idxs = this.revocationIndexesByContentId.get(batchContentId) ?? [];
+    const idxs = this.revocationIndexesByContentId.get(batchContentId.toLowerCase()) ?? [];
     const revocations = [];
     for (const idx of idxs) {
       const inclusionProof = await this.buildProof(idx);

@@ -35,6 +35,14 @@ export class LogClusterManager {
     this.operatorKeys.set(this.logC2C.logId, this.logC2C.getOperatorAddress());
   }
 
+  public setLog(role: "C1" | "C2A" | "C2B" | "C2C", log: any): void {
+    if (role === "C1") (this as any).logC1 = log;
+    else if (role === "C2A") (this as any).logC2A = log;
+    else if (role === "C2B") (this as any).logC2B = log;
+    else if (role === "C2C") (this as any).logC2C = log;
+    this.operatorKeys.set(log.logId, log.getOperatorAddress());
+  }
+
   public getOperatorAddress(logId: string): string | undefined {
     return this.operatorKeys.get(logId);
   }
@@ -49,12 +57,18 @@ export class LogClusterManager {
 
   /** Pinned identity (logId + operator key) of the C1 log, for building a verifier policy. */
   public getPinnedC1(): PinnedLog {
-    return { logId: this.logC1.logId, operatorAddress: this.logC1.getOperatorAddress() };
+    return {
+      logId: this.logC1.logId,
+      operatorAddress: this.getOperatorAddress(this.logC1.logId) || this.logC1.getOperatorAddress(),
+    };
   }
 
   /** Pinned identities of the three C2 logs, for building a verifier policy. */
   public getPinnedC2(): PinnedLog[] {
-    return this.getC2Logs().map((l) => ({ logId: l.logId, operatorAddress: l.getOperatorAddress() }));
+    return this.getC2Logs().map((l) => ({
+      logId: l.logId,
+      operatorAddress: this.getOperatorAddress(l.logId) || l.getOperatorAddress(),
+    }));
   }
 
   public getLogById(logId: string): TransparencyLogEngine | undefined {
@@ -64,12 +78,12 @@ export class LogClusterManager {
   /**
    * Resets all logs for fresh experiment runs (entries, checkpoints, failure options)
    */
-  public resetAll(): void {
-    for (const l of this.getAllLogs()) l.reset();
+  public async resetAll(): Promise<void> {
+    for (const l of this.getAllLogs()) await l.reset();
   }
 
-  public clearAllFailures(): void {
-    for (const l of this.getAllLogs()) l.clearFailureOptions();
+  public async clearAllFailures(): Promise<void> {
+    for (const l of this.getAllLogs()) await l.clearFailureOptions();
   }
 
   /**

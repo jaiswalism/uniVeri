@@ -9,6 +9,7 @@ import { CommonVerifier, buildVerifierPolicy } from "../src/verifier/common-veri
 import { RegistryRetrievalAdapter, createFaultInjectingRunner } from "../src/services/registry-adapter.js";
 import { EvidenceRetriever } from "../src/verifier/evidence-retriever.js";
 import { sampleContainerCgroups } from "./cgroup-collector.js";
+import { validateArtifacts } from "../src/benchmark/validate-artifacts.js";
 import {
   WORKLOAD_MATRIX,
   FAILURE_INTERVENTIONS,
@@ -115,11 +116,17 @@ export async function runAllBenchmarks() {
   if (c1Online && c2Online) {
     console.log("[Log Services] Connecting to HTTP REST Log Daemons...");
     logManager = new LogClusterManager();
-    // Swap internal engines with Http clients
-    (logManager as any).logC1 = new HttpLogEngineClient("LOG_C1_PRIMARY", "http://127.0.0.1:9001");
-    (logManager as any).logC2A = new HttpLogEngineClient("LOG_C2_ALPHA", "http://127.0.0.1:9002");
-    (logManager as any).logC2B = new HttpLogEngineClient("LOG_C2_BETA", "http://127.0.0.1:9003");
-    (logManager as any).logC2C = new HttpLogEngineClient("LOG_C2_GAMMA", "http://127.0.0.1:9004");
+    const c1 = new HttpLogEngineClient("LOG_C1_PRIMARY", "http://127.0.0.1:9001");
+    const c2a = new HttpLogEngineClient("LOG_C2_ALPHA", "http://127.0.0.1:9002");
+    const c2b = new HttpLogEngineClient("LOG_C2_BETA", "http://127.0.0.1:9003");
+    const c2c = new HttpLogEngineClient("LOG_C2_GAMMA", "http://127.0.0.1:9004");
+    await Promise.all([c1.init(), c2a.init(), c2b.init(), c2c.init()]);
+    logManager.setLog("C1", c1);
+    logManager.setLog("C2A", c2a);
+    logManager.setLog("C2B", c2b);
+    logManager.setLog("C2C", c2c);
+    console.log(`[Log Services] Pinned C1: ${logManager.getPinnedC1().operatorAddress}`);
+    console.log(`[Log Services] Pinned C2: ${logManager.getPinnedC2().map((p) => `${p.logId}=${p.operatorAddress}`).join(", ")}`);
   } else {
     console.log("[Log Services] Running in-process LogClusterManager...");
     logManager = new LogClusterManager();
@@ -184,10 +191,13 @@ export async function runAllBenchmarks() {
     await publisher.publishToD(signed).catch(() => {});
   }
 
-  // 7. Execute Workload Matrix W1 to W6
-  console.log(`\n================================================================================`);
-  console.log(`PHASE 1: Normal-Operation Workload Matrix (W1 to W6 across 10 Repetitions)`);
-  console.log(`================================================================================`);
+  const phase3Only = process.argv.includes("--phase3-only");
+
+  if (!phase3Only) {
+    // 7. Execute Workload Matrix W1 to W6
+    console.log(`\n================================================================================`);
+    console.log(`PHASE 1: Normal-Operation Workload Matrix (W1 to W6 across 10 Repetitions)`);
+    console.log(`================================================================================`);
 
   const REPETITIONS = 10;
   const architectures: Array<"C1" | "C2" | "D"> = ["C1", "C2", "D"];
@@ -553,17 +563,35 @@ export async function runAllBenchmarks() {
       }
 
       // Reset faults after repetition
-      logManager.resetAll();
+      await logManager.resetAll();
     }
   }
+  } // End if (!phase3Only)
 
   // 9. Correctness Tests (Section 5)
   console.log(`\n================================================================================`);
   console.log(`PHASE 3: Correctness & Safe Uncertainty Test Suite (8 Targeted Test Cases)`);
   console.log(`================================================================================`);
 
+  // Generate dedicated test batch for Phase 3
+  const tcCerts = generateWorkloadCertificates(10, issuerId);
+  const tcLeaves = tcCerts.map((c) => hashCertificateLeaf(c));
+  const tcTree = new MerkleTree(tcLeaves);
+  const tcManifest = createBatchManifest({
+    issuerId,
+    institutionBatchNumber: 8888,
+    issuerAddress: issuerWallet.address,
+    issuerKeyVersion: 1,
+    merkleRoot: tcTree.getRoot(),
+    credentialCount: tcCerts.length,
+  });
+  const tcBatchItem = {
+    signedManifest: await signBatchManifest(tcManifest, issuerWallet),
+    firstCert: tcCerts[0],
+    firstProof: tcTree.getProof(0),
+  };
+
   // ---------------- TC-1: Unmodified certificate ----------------
-  const tcBatchItem = w4Batches[0];
   await publisher.publishToC1(tcBatchItem.signedManifest);
   const retC1 = new EvidenceRetriever(logManager, registryAdapter);
   const evC1 = await retC1.fetch("C1", tcBatchItem.signedManifest);
@@ -610,7 +638,10 @@ export async function runAllBenchmarks() {
   });
 
   // ---------------- TC-3: Invalid Merkle proof ----------------
-  const invalidProof = { ...tcBatchItem.firstProof, auditPath: [ethers.ZeroHash] };
+  const invalidProof = {
+    ...tcBatchItem.firstProof,
+    proof: [{ position: "left" as const, data: "0x" + "11".repeat(32) }],
+  };
   const r3 = verifier.verifyCertificate({
     certificate: tcBatchItem.firstCert,
     merkleProof: invalidProof,
@@ -676,16 +707,14 @@ export async function runAllBenchmarks() {
   });
 
   // ---------------- TC-6: Genuinely signed stale checkpoint (>300s) ----------------
-  const staleCp = {
-    ...((evC1.evidence as any)?.checkpoint),
-    timestamp: Math.floor(Date.now() / 1000) - 600,
-  };
-  const staleEvidence = { ...evC1.evidence, checkpoint: staleCp };
+  await logManager.logC1.setFailureOptions({ staleCheckpointAgeSec: 600 });
+  const evC1Stale = await retC1.fetch("C1", tcBatchItem.signedManifest);
+  await logManager.logC1.clearFailureOptions();
   const r6 = verifier.verifyCertificate({
     certificate: tcBatchItem.firstCert,
     merkleProof: tcBatchItem.firstProof,
     signedManifest: tcBatchItem.signedManifest,
-    evidence: staleEvidence as any,
+    evidence: evC1Stale.evidence,
   });
   correctnessTests.push({
     testId: "TC-6",
@@ -701,6 +730,7 @@ export async function runAllBenchmarks() {
   });
 
   // ---------------- TC-7: Verified institution-authorized revocation ----------------
+  await publisher.publishToD(tcBatchItem.signedManifest);
   const revokeTx = await (registryContract.connect(deployerSigner) as any)["revokeBatch(bytes32,string)"](
     tcBatchItem.signedManifest.manifest.batchContentId,
     "Administrative correction"
@@ -728,7 +758,7 @@ export async function runAllBenchmarks() {
 
   // ---------------- TC-8: C2 issuance with 1 log down (Safe Uncertainty) ----------------
   await publisher.publishToC2(tcBatchItem.signedManifest);
-  logManager.logC2A.setFailureOptions({ unavailable: true });
+  await logManager.logC2A.setFailureOptions({ unavailable: true });
   const evC2Safe = await retC1.fetch("C2", tcBatchItem.signedManifest);
   const r8 = verifier.verifyCertificate({
     certificate: tcBatchItem.firstCert,
@@ -736,7 +766,8 @@ export async function runAllBenchmarks() {
     signedManifest: tcBatchItem.signedManifest,
     evidence: evC2Safe.evidence,
   });
-  logManager.resetAll();
+  await logManager.resetAll();
+  await logManager.clearAllFailures();
   correctnessTests.push({
     testId: "TC-8",
     description: "Two C2 issuance proofs while Alpha is unavailable",
@@ -762,67 +793,98 @@ export async function runAllBenchmarks() {
   const outDir = path.resolve("./results");
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
-  // 1. publication_trials.csv
-  const trialCsvLines = [
-    "run_id,architecture,scenario,N,K,B,batch_id,submission_time,first_acceptance_time,quorum_acceptance_time,evidence_completion_time,outcome,attempt_count,supporting_log_ids,evidence_boundary",
-    ...publicationTrials.map((t) =>
-      [
-        t.runId,
-        t.architecture,
-        `"${t.scenario}"`,
-        t.N,
-        t.K,
-        t.B,
-        t.batchId,
-        t.submissionTime,
-        t.firstAcceptanceTime ?? "",
-        t.quorumAcceptanceTime ?? "",
-        t.evidenceCompletionTime ?? "",
-        t.outcome,
-        t.attemptCount,
-        `"${t.supportingLogIds}"`,
-        `"${t.evidenceBoundary}"`,
-      ].join(",")
-    ),
-  ];
-  fs.writeFileSync(path.join(outDir, "publication_trials.csv"), trialCsvLines.join("\n"), "utf-8");
-  console.log(`  ✓ Written results/publication_trials.csv (${publicationTrials.length} rows)`);
+  if (!phase3Only) {
+    // 1. publication_trials.csv
+    const trialCsvLines = [
+      "run_id,architecture,scenario,N,K,B,batch_id,submission_time,first_acceptance_time,quorum_acceptance_time,evidence_completion_time,outcome,attempt_count,supporting_log_ids,evidence_boundary",
+      ...publicationTrials.map((t) =>
+        [
+          t.runId,
+          t.architecture,
+          `"${t.scenario}"`,
+          t.N,
+          t.K,
+          t.B,
+          t.batchId,
+          t.submissionTime,
+          t.firstAcceptanceTime ?? "",
+          t.quorumAcceptanceTime ?? "",
+          t.evidenceCompletionTime ?? "",
+          t.outcome,
+          t.attemptCount,
+          `"${t.supportingLogIds}"`,
+          `"${t.evidenceBoundary}"`,
+        ].join(",")
+      ),
+    ];
+    fs.writeFileSync(path.join(outDir, "publication_trials.csv"), trialCsvLines.join("\n"), "utf-8");
+    console.log(`  ✓ Written results/publication_trials.csv (${publicationTrials.length} rows)`);
 
-  // 2. verification_queries.csv
-  const queryCsvLines = [
-    "run_id,query_id,batch_id,cache_mode,retrieval_latency,local_verification_latency,total_latency,evidence_available,evidence_fresh,authentication_result,publication_result,status_result,evidence_boundary",
-    ...verificationQueries.map((q) =>
-      [
-        q.runId,
-        q.queryId,
-        q.batchId,
-        q.cacheMode,
-        q.retrievalLatencyMs.toFixed(3),
-        q.localVerificationLatencyMs.toFixed(3),
-        q.totalLatencyMs.toFixed(3),
-        q.evidenceAvailable,
-        q.evidenceFresh,
-        q.authenticationResult,
-        q.publicationResult,
-        q.statusResult,
-        `"${q.evidenceBoundary}"`,
-      ].join(",")
-    ),
-  ];
-  fs.writeFileSync(path.join(outDir, "verification_queries.csv"), queryCsvLines.join("\n"), "utf-8");
-  console.log(`  ✓ Written results/verification_queries.csv (${verificationQueries.length} rows)`);
+    // 2. verification_queries.csv
+    const queryCsvLines = [
+      "run_id,query_id,batch_id,cache_mode,retrieval_latency,local_verification_latency,total_latency,evidence_available,evidence_fresh,authentication_result,publication_result,status_result,evidence_boundary",
+      ...verificationQueries.map((q) =>
+        [
+          q.runId,
+          q.queryId,
+          q.batchId,
+          q.cacheMode,
+          q.retrievalLatencyMs.toFixed(3),
+          q.localVerificationLatencyMs.toFixed(3),
+          q.totalLatencyMs.toFixed(3),
+          q.evidenceAvailable,
+          q.evidenceFresh,
+          q.authenticationResult,
+          q.publicationResult,
+          q.statusResult,
+          `"${q.evidenceBoundary}"`,
+        ].join(",")
+      ),
+    ];
+    fs.writeFileSync(path.join(outDir, "verification_queries.csv"), queryCsvLines.join("\n"), "utf-8");
+    console.log(`  ✓ Written results/verification_queries.csv (${verificationQueries.length} rows)`);
 
-  // 3. resource_measurements.csv
-  const resCsvLines = [
-    "run_id,architecture,component,metric_name,value,unit,measurement_boundary",
-    ...resourceMeasurements.map((m) =>
-      [m.runId, m.architecture, m.component, m.metricName, m.value, m.unit, `"${m.measurementBoundary}"`].join(",")
-    ),
-  ];
-  fs.writeFileSync(path.join(outDir, "resource_measurements.csv"), resCsvLines.join("\n"), "utf-8");
-  console.log(`  ✓ Written results/resource_measurements.csv (${resourceMeasurements.length} rows with cgroups populated)`);
+    // 3. resource_measurements.csv
+    const resCsvLines = [
+      "run_id,architecture,component,metric_name,value,unit,measurement_boundary",
+      ...resourceMeasurements.map((m) =>
+        [m.runId, m.architecture, m.component, m.metricName, m.value, m.unit, `"${m.measurementBoundary}"`].join(",")
+      ),
+    ];
+    fs.writeFileSync(path.join(outDir, "resource_measurements.csv"), resCsvLines.join("\n"), "utf-8");
+    console.log(`  ✓ Written results/resource_measurements.csv (${resourceMeasurements.length} rows with cgroups populated)`);
 
-  // 4. correctness_tests.csv
+    // 5. run_config.json
+    const runConfig = {
+      specVersion: "2026-10-04",
+      researchScopeAuthority: "Academic_Certificate_Verification_Frozen_Research_Plan.md",
+      hashAlgorithm: "Keccak256",
+      signatureAlgorithm: "ECDSA (secp256k1)",
+      canonicalJsonStandard: "RFC 8785 strict subset",
+      schemaVersion: "1.0.0",
+      executionEnvironment: besuOnline ? "Hyperledger Besu QBFT 4-Node Cluster (Docker)" : "Hardhat EVM (Solidity 0.8.24 viaIR)",
+      besuConfig: {
+        consensus: "QBFT",
+        blockPeriodSeconds: 1,
+        epochLength: 30000,
+        requestTimeoutSeconds: 4,
+        chainId,
+        rpcEndpoint: besuRpcUrl,
+        contractAddress,
+      },
+      cgroupResourceCollection: true,
+      totalWorkloadRuns: 240,
+      totalScheduledBatchTrials: publicationTrials.length,
+      timestamp: new Date().toISOString(),
+    };
+    fs.writeFileSync(path.join(outDir, "run_config.json"), JSON.stringify(runConfig, null, 2), "utf-8");
+    console.log(`  ✓ Written results/run_config.json`);
+
+    fs.writeFileSync(path.join(outDir, "publication_traces.json"), JSON.stringify(publicationTraces, null, 2), "utf-8");
+    console.log(`  ✓ Written results/publication_traces.json (${publicationTraces.length} traces)`);
+  }
+
+  // 4. correctness_tests.csv (always updated)
   const corrCsvLines = [
     "test_id,description,architecture,expected_auth,observed_auth,expected_pub,observed_pub,expected_status,observed_status,passed",
     ...correctnessTests.map((c) =>
@@ -843,34 +905,15 @@ export async function runAllBenchmarks() {
   fs.writeFileSync(path.join(outDir, "correctness_tests.csv"), corrCsvLines.join("\n"), "utf-8");
   console.log(`  ✓ Written results/correctness_tests.csv (${correctnessTests.length} tests)`);
 
-  // 5. run_config.json
-  const runConfig = {
-    specVersion: "2026-10-04",
-    researchScopeAuthority: "Academic_Certificate_Verification_Frozen_Research_Plan.md",
-    hashAlgorithm: "Keccak256",
-    signatureAlgorithm: "ECDSA (secp256k1)",
-    canonicalJsonStandard: "RFC 8785 strict subset",
-    schemaVersion: "1.0.0",
-    executionEnvironment: besuOnline ? "Hyperledger Besu QBFT 4-Node Cluster (Docker)" : "Hardhat EVM (Solidity 0.8.24 viaIR)",
-    besuConfig: {
-      consensus: "QBFT",
-      blockPeriodSeconds: 1,
-      epochLength: 30000,
-      requestTimeoutSeconds: 4,
-      chainId,
-      rpcEndpoint: besuRpcUrl,
-      contractAddress,
-    },
-    cgroupResourceCollection: true,
-    totalWorkloadRuns: 240,
-    totalScheduledBatchTrials: publicationTrials.length,
-    timestamp: new Date().toISOString(),
-  };
-  fs.writeFileSync(path.join(outDir, "run_config.json"), JSON.stringify(runConfig, null, 2), "utf-8");
-  console.log(`  ✓ Written results/run_config.json`);
+  if (fs.existsSync(path.join(outDir, "run_config.json")) && fs.existsSync(path.join(outDir, "publication_trials.csv"))) {
+    console.log("\n================================================================================");
+    console.log("Auditing results directory via validateArtifacts()...");
+    console.log("================================================================================");
+    validateArtifacts(outDir);
+  }
 
   console.log("\n================================================================================");
-  console.log("ALL BENCHMARK SUITES COMPLETED SUCCESSFULLY!");
+  console.log("BENCHMARK EXECUTION COMPLETED!");
   console.log("================================================================================");
 }
 

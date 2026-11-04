@@ -12,6 +12,7 @@
     "benchmark": "tsx src/benchmark/runner.ts",
     "benchmark:spec": "tsx src/benchmark/runner-spec.ts",
     "benchmark:testbed": "tsx scripts/run-all-benchmarks.ts",
+    "benchmark:correctness": "tsx scripts/run-all-benchmarks.ts --phase3-only",
     "setup:besu": "tsx scripts/setup-besu-cluster.ts",
     "start:log-daemon": "tsx services/log-daemon/server.ts",
     "fault:proposer": "tsx scripts/faults/fault-d-f2b-stop-proposer.ts",

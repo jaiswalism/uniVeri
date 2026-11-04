@@ -108,6 +108,14 @@ export class HttpLogEngineClient {
     });
   }
 
+  public async clearFailureOptions(): Promise<void> {
+    await this.setFailureOptions({});
+  }
+
+  public async createCheckpoint(): Promise<SignedTreeCheckpoint> {
+    return this.getLatestCheckpoint();
+  }
+
   public async reset(): Promise<void> {
     await fetch(`${this.baseUrl}/v1/admin/reset`, { method: "POST" });
   }

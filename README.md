@@ -69,7 +69,7 @@ flowchart TD
 ### 2. Multi-Container Testbed Environment
 - **Architecture D (4-Node Hyperledger Besu QBFT Cluster):**
   - 4 validator nodes (`besu-node-1` to `besu-node-4`) with deterministic QBFT genesis configuration:
-    - 2-second block period (`blockperiodseconds: 2`)
+    - 1-second block period (`blockperiodseconds: 1`)
     - 30,000 block epoch length (`epochlength: 30000`)
     - 4-second request timeout (`requesttimeoutseconds: 4`)
   - Enforced per-container resource boundaries: `cpus: "2.0"`, `mem_limit: 4g`.
@@ -214,9 +214,12 @@ npm run test:contracts
 
 3. **Execute the Benchmarking Suite:**
    ```bash
+   # Execute the complete benchmark across all architectures and workloads (W1–W6, 10 reps)
    npm run benchmark:testbed
+
+   # Or execute the Section 5 Correctness Suite (TC-1 to TC-8) standalone against the live cluster
+   npm run benchmark:correctness
    ```
-   *(Note: If Docker is offline, the runner automatically falls back to local execution with full provenance).*
 
 4. **Execute Fault Injections:**
    ```bash

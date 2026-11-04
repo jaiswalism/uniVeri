@@ -31,8 +31,11 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "cors": "^2.8.5",
     "ethers": "^6.13.4",
-    "fast-json-stable-stringify": "^2.1.0"
+    "express": "^4.21.2",
+    "fast-json-stable-stringify": "^2.1.0",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
@@ -52,15 +55,12 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.3.4",
     "chai": "^4.5.0",
-    "cors": "^2.8.5",
-    "express": "^4.21.2",
     "hardhat": "^2.22.17",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "solidity-coverage": "^0.8.14",
     "ts-node": "^10.9.2",
-    "tsx": "^4.23.15",
     "typechain": "^8.3.2",
     "typescript": "^5.7.2",
     "vite": "^5.4.11",

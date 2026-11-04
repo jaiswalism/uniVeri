@@ -5,8 +5,8 @@ WORKDIR /app
 # Copy root package files
 COPY package*.json tsconfig.json ./
 
-# Install dependencies
-RUN npm ci --omit=dev
+# Install exact runtime dependencies for log daemon
+RUN npm install --omit=dev
 
 # Copy source
 COPY src/ ./src/

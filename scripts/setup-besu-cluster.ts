@@ -44,24 +44,16 @@ export function generateBesuConfig() {
   }
 
   // Build ExtraData for Besu QBFT
-  // Vanity: 32 bytes (64 chars) of zeros
+  // In QBFT, extraData is an RLP list: [ vanity (32 bytes), [validators], [], round (empty/0x), [] ]
   const vanity = "0x" + "00".repeat(32);
-  
-  // In QBFT, extraData contains RLP([validators, votes, round, seals])
-  // Validator addresses list RLP encoded:
   const validatorAddresses = validators.map((v) => v.address);
-  
-  // Ethers RLP encoder:
-  // [ validatorAddresses, [], 0, [] ]
-  const rlpEncodedPayload = ethers.encodeRlp([
+  const extraData = ethers.encodeRlp([
+    vanity,
     validatorAddresses,
     [],
-    "0x00",
-    []
+    "0x",
+    [],
   ]);
-
-  // Combined extraData: vanity (32 bytes) + RLP payload bytes (without 0x)
-  const extraData = vanity + rlpEncodedPayload.slice(2);
 
   const alloc: Record<string, { balance: string }> = {};
   for (const acc of FUNDED_ACCOUNTS) {

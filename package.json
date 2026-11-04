@@ -11,6 +11,11 @@
     "test:core": "vitest run",
     "benchmark": "tsx src/benchmark/runner.ts",
     "benchmark:spec": "tsx src/benchmark/runner-spec.ts",
+    "benchmark:testbed": "tsx scripts/run-all-benchmarks.ts",
+    "setup:besu": "tsx scripts/setup-besu-cluster.ts",
+    "start:log-daemon": "tsx services/log-daemon/server.ts",
+    "fault:proposer": "tsx scripts/faults/fault-d-f2b-stop-proposer.ts",
+    "fault:proxy": "tsx scripts/faults/fault-d-f5-rpc-proxy.ts",
     "validate:artifacts": "tsx src/benchmark/validate-artifacts.ts",
     "dev:ui": "vite",
     "build:ui": "vite build"

@@ -1,0 +1,199 @@
+version: "3.8"
+
+networks:
+  testbed-net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+
+services:
+  # ============================================================================
+  # ARCHITECTURE D: 4-Node Hyperledger Besu QBFT Cluster
+  # ============================================================================
+  besu-node-1:
+    image: hyperledger/besu:24.7.0
+    container_name: besu-node-1
+    restart: unless-stopped
+    cpus: "2.0"
+    mem_limit: 4g
+    environment:
+      - BESU_LOGGING=INFO
+    volumes:
+      - ./docker/besu/genesis.json:/var/lib/besu/genesis.json:ro
+      - ./docker/besu/validator1/data:/var/lib/besu/data
+    networks:
+      testbed-net:
+        ipv4_address: 172.28.0.11
+    ports:
+      - "8545:8545"
+      - "8546:8546"
+    entrypoint:
+      - besu
+      - --data-path=/var/lib/besu/data
+      - --genesis-file=/var/lib/besu/genesis.json
+      - --node-private-key-file=/var/lib/besu/data/key
+      - --rpc-http-enabled=true
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-api=ETH,NET,QBFT,WEB3
+      - --rpc-http-cors-origins=*
+      - --host-allowlist=*
+      - --p2p-enabled=true
+      - --p2p-host=172.28.0.11
+      - --p2p-port=30303
+      - --bootnodes=enode://b1239c0dcde69fa62e92cbce2a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec@172.28.0.11:30303
+      - --discovery-enabled=true
+
+  besu-node-2:
+    image: hyperledger/besu:24.7.0
+    container_name: besu-node-2
+    restart: unless-stopped
+    cpus: "2.0"
+    mem_limit: 4g
+    environment:
+      - BESU_LOGGING=INFO
+    volumes:
+      - ./docker/besu/genesis.json:/var/lib/besu/genesis.json:ro
+      - ./docker/besu/validator2/data:/var/lib/besu/data
+    networks:
+      testbed-net:
+        ipv4_address: 172.28.0.12
+    depends_on:
+      - besu-node-1
+    entrypoint:
+      - besu
+      - --data-path=/var/lib/besu/data
+      - --genesis-file=/var/lib/besu/genesis.json
+      - --node-private-key-file=/var/lib/besu/data/key
+      - --p2p-enabled=true
+      - --p2p-host=172.28.0.12
+      - --p2p-port=30303
+      - --bootnodes=enode://b1239c0dcde69fa62e92cbce2a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec@172.28.0.11:30303
+      - --discovery-enabled=true
+
+  besu-node-3:
+    image: hyperledger/besu:24.7.0
+    container_name: besu-node-3
+    restart: unless-stopped
+    cpus: "2.0"
+    mem_limit: 4g
+    environment:
+      - BESU_LOGGING=INFO
+    volumes:
+      - ./docker/besu/genesis.json:/var/lib/besu/genesis.json:ro
+      - ./docker/besu/validator3/data:/var/lib/besu/data
+    networks:
+      testbed-net:
+        ipv4_address: 172.28.0.13
+    depends_on:
+      - besu-node-1
+    entrypoint:
+      - besu
+      - --data-path=/var/lib/besu/data
+      - --genesis-file=/var/lib/besu/genesis.json
+      - --node-private-key-file=/var/lib/besu/data/key
+      - --p2p-enabled=true
+      - --p2p-host=172.28.0.13
+      - --p2p-port=30303
+      - --bootnodes=enode://b1239c0dcde69fa62e92cbce2a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec@172.28.0.11:30303
+      - --discovery-enabled=true
+
+  besu-node-4:
+    image: hyperledger/besu:24.7.0
+    container_name: besu-node-4
+    restart: unless-stopped
+    cpus: "2.0"
+    mem_limit: 4g
+    environment:
+      - BESU_LOGGING=INFO
+    volumes:
+      - ./docker/besu/genesis.json:/var/lib/besu/genesis.json:ro
+      - ./docker/besu/validator4/data:/var/lib/besu/data
+    networks:
+      testbed-net:
+        ipv4_address: 172.28.0.14
+    depends_on:
+      - besu-node-1
+    entrypoint:
+      - besu
+      - --data-path=/var/lib/besu/data
+      - --genesis-file=/var/lib/besu/genesis.json
+      - --node-private-key-file=/var/lib/besu/data/key
+      - --p2p-enabled=true
+      - --p2p-host=172.28.0.14
+      - --p2p-port=30303
+      - --bootnodes=enode://b1239c0dcde69fa62e92cbce2a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec1f99c8942a78ec@172.28.0.11:30303
+      - --discovery-enabled=true
+
+  # ============================================================================
+  # ARCHITECTURE C1: Single Transparency Log Daemon
+  # ============================================================================
+  log-c1-primary:
+    build:
+      context: .
+      dockerfile: services/log-daemon/Dockerfile
+    container_name: log-c1-primary
+    restart: unless-stopped
+    environment:
+      - LOG_ID=LOG_C1_PRIMARY
+      - PORT=9001
+      - OPERATOR_KEY=0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d
+    networks:
+      testbed-net:
+        ipv4_address: 172.28.0.21
+    ports:
+      - "9001:9001"
+
+  # ============================================================================
+  # ARCHITECTURE C2: 3-Log Multi-Quorum Daemons (Alpha, Beta, Gamma)
+  # ============================================================================
+  log-c2-alpha:
+    build:
+      context: .
+      dockerfile: services/log-daemon/Dockerfile
+    container_name: log-c2-alpha
+    restart: unless-stopped
+    environment:
+      - LOG_ID=LOG_C2_ALPHA
+      - PORT=9002
+      - OPERATOR_KEY=0x6cbed15c793ce57650b9877cf2182d8edd7d0c85f23431af3eb2100e80e150c1
+    networks:
+      testbed-net:
+        ipv4_address: 172.28.0.22
+    ports:
+      - "9002:9002"
+
+  log-c2-beta:
+    build:
+      context: .
+      dockerfile: services/log-daemon/Dockerfile
+    container_name: log-c2-beta
+    restart: unless-stopped
+    environment:
+      - LOG_ID=LOG_C2_BETA
+      - PORT=9003
+      - OPERATOR_KEY=0x6370fd0332c6da767ced08d3d14f0b4590f42a22c7773e9f33da3bbce9126ba2
+    networks:
+      testbed-net:
+        ipv4_address: 172.28.0.23
+    ports:
+      - "9003:9003"
+
+  log-c2-gamma:
+    build:
+      context: .
+      dockerfile: services/log-daemon/Dockerfile
+    container_name: log-c2-gamma
+    restart: unless-stopped
+    environment:
+      - LOG_ID=LOG_C2_GAMMA
+      - PORT=9004
+      - OPERATOR_KEY=0x649f17374c84a83ca71569024fb7029c32de3db00070e5c607c3c9559e83be1f
+    networks:
+      testbed-net:
+        ipv4_address: 172.28.0.24
+    ports:
+      - "9004:9004"
+

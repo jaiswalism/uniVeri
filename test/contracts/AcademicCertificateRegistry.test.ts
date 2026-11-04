@@ -216,11 +216,11 @@ describe("Milestone 3: Architecture D Smart Contract (AcademicCertificateRegistr
 
     // Unauthorized third-party revocation attempt must be rejected
     await expect(
-      registry.connect(thirdParty).revokeBatch(contentId, "Unauthorized revocation")
+      registry.connect(thirdParty)["revokeBatch(bytes32,string)"](contentId, "Unauthorized revocation")
     ).to.be.revertedWithCustomError(registry, "Unauthorized");
 
     // Institution-authorized revocation through issuer signer succeeds
-    await registry.connect(issuer).revokeBatch(contentId, "Administrative correction");
+    await registry.connect(issuer)["revokeBatch(bytes32,string)"](contentId, "Administrative correction");
 
     const batchAfter = await registry.getBatch(contentId);
     expect(batchAfter.status).to.equal(2); // BatchStatus.REVOKED

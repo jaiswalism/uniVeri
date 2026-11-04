@@ -18,11 +18,11 @@ contract AcademicCertificateRegistry {
         bytes32 batchContentId;
         bytes32 merkleRoot;
         address issuerAddress;
-        uint16 issuerKeyVersion;
-        uint32 credentialCount;
-        uint64 issuedAt;
-        uint64 registeredAt;
-        uint64 registeredBlockNumber;
+        uint256 issuerKeyVersion;
+        uint256 credentialCount;
+        uint256 issuedAt;
+        uint256 registeredAt;
+        uint256 registeredBlockNumber;
         BatchStatus status;
     }
 
@@ -30,7 +30,7 @@ contract AcademicCertificateRegistry {
         string issuerId;
         address signingAddress;
         bool isActive;
-        uint64 registeredAt;
+        uint256 registeredAt;
     }
 
     // Registry owner / governance
@@ -58,8 +58,8 @@ contract AcademicCertificateRegistry {
         bytes32 indexed batchContentId,
         bytes32 merkleRoot,
         address indexed issuerAddress,
-        uint32 credentialCount,
-        uint64 registeredBlockNumber
+        uint256 credentialCount,
+        uint256 issuedAt
     );
     event BatchConflictDetected(
         bytes32 indexed logicalBatchId,
@@ -72,7 +72,7 @@ contract AcademicCertificateRegistry {
         bytes32 indexed batchContentId,
         address indexed issuerAddress,
         string reason,
-        uint64 revokedAt
+        uint256 revokedAt
     );
 
     error Unauthorized();
@@ -101,7 +101,7 @@ contract AcademicCertificateRegistry {
             issuerId: issuerId,
             signingAddress: signingAddress,
             isActive: true,
-            registeredAt: uint64(block.timestamp)
+            registeredAt: block.timestamp
         });
         issuerIdToAddress[issuerId] = signingAddress;
         emit IssuerRegistered(issuerId, signingAddress);
@@ -124,31 +124,17 @@ contract AcademicCertificateRegistry {
     }
 
     /**
-     * @notice Permissionless batch registration with scoped on-chain admission control.
+     * @notice Permissionless batch registration with on-chain admission control.
      * Anyone (independent publisher) can submit, provided the manifest payload passes admission checks.
-     *
-     * ADMISSION-CONTROL SCOPE & SYSTEM BOUNDARY:
-     * - The common publisher validates the complete manifest predicate (including full off-chain
-     *   logicalBatchId and batchContentId derivation) prior to submission.
-     * - The contract independently verifies:
-     *     1. Issuer registration and active status (`issuers[issuerAddress].isActive`);
-     *     2. No duplicate content IDs (`batchesByContentId[batchContentId].status == NONE`);
-     *     3. No conflicting batch for this logicalBatchId (`logicalBatchToContentId`);
-     *     4. ECDSA cryptographic authorization signed by the registered issuer over supplied fields.
-     * - Fields omitted from calldata (issuerId string, schemaVersion, institutionBatchNumber) are
-     *   validated off-chain by the publisher and downstream verifier; the contract does not recompute
-     *   off-chain derivation formulas for omitted string/schema fields.
-     * - Local Hardhat EVM execution benchmarks gas and state transitions; it does not prove
-     *   production blockchain properties (e.g. MEV, reorgs, censorship, or P2P propagation).
      */
     function registerBatch(
         bytes32 logicalBatchId,
         bytes32 batchContentId,
         bytes32 merkleRoot,
         address issuerAddress,
-        uint16 issuerKeyVersion,
-        uint32 credentialCount,
-        uint64 issuedAt,
+        uint256 issuerKeyVersion,
+        uint256 credentialCount,
+        uint256 issuedAt,
         bytes calldata institutionSignature
     ) external {
         // 1. Verify issuer is active
@@ -168,7 +154,6 @@ contract AcademicCertificateRegistry {
         }
 
         // 4. Verify Institutional Signature over Manifest hash
-        // Construct canonical message hash
         bytes32 manifestHash = keccak256(
             abi.encode(
                 logicalBatchId,
@@ -196,8 +181,8 @@ contract AcademicCertificateRegistry {
             issuerKeyVersion: issuerKeyVersion,
             credentialCount: credentialCount,
             issuedAt: issuedAt,
-            registeredAt: uint64(block.timestamp),
-            registeredBlockNumber: uint64(block.number),
+            registeredAt: block.timestamp,
+            registeredBlockNumber: block.number,
             status: BatchStatus.ACTIVE
         });
 
@@ -211,7 +196,7 @@ contract AcademicCertificateRegistry {
             merkleRoot,
             issuerAddress,
             credentialCount,
-            uint64(block.number)
+            issuedAt
         );
     }
 
@@ -222,9 +207,9 @@ contract AcademicCertificateRegistry {
         bytes32 logicalBatchId,
         bytes32 batchContentId,
         bytes32 merkleRoot,
-        uint16 issuerKeyVersion,
-        uint32 credentialCount,
-        uint64 issuedAt
+        uint256 issuerKeyVersion,
+        uint256 credentialCount,
+        uint256 issuedAt
     ) external {
         address issuerAddress = msg.sender;
         IssuerInfo memory issuer = issuers[issuerAddress];
@@ -248,8 +233,8 @@ contract AcademicCertificateRegistry {
             issuerKeyVersion: issuerKeyVersion,
             credentialCount: credentialCount,
             issuedAt: issuedAt,
-            registeredAt: uint64(block.timestamp),
-            registeredBlockNumber: uint64(block.number),
+            registeredAt: block.timestamp,
+            registeredBlockNumber: block.number,
             status: BatchStatus.ACTIVE
         });
 
@@ -263,12 +248,46 @@ contract AcademicCertificateRegistry {
             merkleRoot,
             issuerAddress,
             credentialCount,
-            uint64(block.number)
+            issuedAt
         );
     }
 
     /**
-     * @notice Revoke a batch (only callable by the issuing institution or contract owner)
+     * @notice Revoke a batch via institutional signature or direct authorized caller
+     */
+    function revokeBatch(
+        bytes32 logicalBatchId,
+        bytes32 batchContentId,
+        bytes calldata revocationSignature
+    ) external {
+        BatchRecord storage record = batchesByContentId[batchContentId];
+        if (record.status == BatchStatus.NONE) revert BatchNotFound();
+        if (record.status == BatchStatus.REVOKED) revert BatchAlreadyRevoked();
+
+        // Verify authorization: caller must be issuer, owner, or provide valid issuer signature
+        if (msg.sender != record.issuerAddress && msg.sender != owner) {
+            bytes32 revokeHash = toEthSignedMessageHash(
+                keccak256(abi.encode("REVOKE", logicalBatchId, batchContentId))
+            );
+            address recovered = recoverSigner(revokeHash, revocationSignature);
+            if (recovered != record.issuerAddress) {
+                revert Unauthorized();
+            }
+        }
+
+        record.status = BatchStatus.REVOKED;
+
+        emit BatchRevoked(
+            logicalBatchId,
+            batchContentId,
+            record.issuerAddress,
+            "INSTITUTIONAL_REVOCATION",
+            block.timestamp
+        );
+    }
+
+    /**
+     * @notice Direct revocation by issuer or owner with reason string
      */
     function revokeBatch(
         bytes32 batchContentId,
@@ -289,7 +308,7 @@ contract AcademicCertificateRegistry {
             batchContentId,
             record.issuerAddress,
             reason,
-            uint64(block.timestamp)
+            block.timestamp
         );
     }
 
@@ -301,46 +320,47 @@ contract AcademicCertificateRegistry {
     }
 
     /**
-     * @notice View function to get batch record by logical batch ID
+     * @notice Checks whether a batch is active and returns root and block
      */
-    function getBatchByLogicalId(bytes32 logicalBatchId) external view returns (BatchRecord memory) {
-        bytes32 contentId = logicalBatchToContentId[logicalBatchId];
-        return batchesByContentId[contentId];
-    }
-
-    /**
-     * @notice Verification query: checks if a batch root is active on-chain
-     */
-    function isBatchActive(bytes32 batchContentId) external view returns (bool, bytes32, uint64) {
+    function isBatchActive(bytes32 batchContentId) external view returns (
+        bool active,
+        bytes32 merkleRoot,
+        uint256 blockNumber
+    ) {
         BatchRecord memory record = batchesByContentId[batchContentId];
-        if (record.status == BatchStatus.ACTIVE) {
-            return (true, record.merkleRoot, record.registeredBlockNumber);
-        }
-        return (false, bytes32(0), 0);
+        return (
+            record.status == BatchStatus.ACTIVE,
+            record.merkleRoot,
+            record.registeredBlockNumber
+        );
     }
 
     /**
      * @dev Internal helper to recover signer from signature
      */
-    function recoverSigner(bytes32 ethSignedMessageHash, bytes memory sig) internal pure returns (address) {
+    function recoverSigner(bytes32 ethSignedHash, bytes memory sig) internal pure returns (address) {
         if (sig.length != 65) {
             return address(0);
         }
+
         bytes32 r;
         bytes32 s;
         uint8 v;
+
         assembly {
             r := mload(add(sig, 32))
             s := mload(add(sig, 64))
             v := byte(0, mload(add(sig, 96)))
         }
-        // Common signature format: v in {27, 28} and canonical (low) s, identical to the off-chain verifier.
+
+        if (v < 27) {
+            v += 27;
+        }
+
         if (v != 27 && v != 28) {
             return address(0);
         }
-        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
-            return address(0);
-        }
-        return ecrecover(ethSignedMessageHash, v, r, s);
+
+        return ecrecover(ethSignedHash, v, r, s);
     }
 }

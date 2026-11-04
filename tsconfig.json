@@ -14,6 +14,6 @@
     "declaration": true,
     "types": ["node", "react", "react-dom", "mocha", "chai"]
   },
-  "include": ["src/**/*", "contracts/**/*", "test/**/*", "hardhat.config.ts", "typechain-types/**/*"],
+  "include": ["src/**/*", "contracts/**/*", "test/**/*", "hardhat.config.ts", "typechain-types/**/*", "scripts/**/*"],
   "exclude": ["node_modules", "dist", "dist-ui"]
 }

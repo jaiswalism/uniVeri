@@ -81,7 +81,7 @@ export function generateBesuConfig() {
       berlinBlock: 0,
       londonBlock: 0,
       qbft: {
-        blockperiodseconds: 2,
+        blockperiodseconds: 1,
         epochlength: 30000,
         requesttimeoutseconds: 4,
         validators: validatorAddresses,

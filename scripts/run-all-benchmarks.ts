@@ -127,7 +127,10 @@ export async function runAllBenchmarks() {
 
   // 5. Publisher & Verifier setup
   const registryAdapter = new RegistryRetrievalAdapter(registryContract as any, provider, 1);
-  const publisher = new IndependentPublisher(logManager);
+  const publisherConfig = besuOnline
+    ? { deadlineMs: 6000, lateObservationWindowMs: 12000, pollIntervalMs: 50, maxAttempts: 3, initialBackoffMs: 20, backoffMultiplier: 2 }
+    : { deadlineMs: 1000, lateObservationWindowMs: 3000, pollIntervalMs: 5, maxAttempts: 3, initialBackoffMs: 10, backoffMultiplier: 2 };
+  const publisher = new IndependentPublisher(logManager, publisherConfig);
   publisher.setRegistry(registryContract.connect(publisherSigner) as any, registryAdapter, provider);
 
   const verifier = new CommonVerifier(logManager);
@@ -227,57 +230,123 @@ export async function runAllBenchmarks() {
         let totalCalldataForRun = 0;
         let totalEventBytesForRun = 0;
 
-        for (let b = 0; b < batches.length; b++) {
-          const item = batches[b];
-          const subStart = performance.now();
-          let pubRes: any;
+        if (arch === "D" && besuOnline && batches.length > 5) {
+          // Concurrent batch submissions with explicit nonces for high throughput on Besu
+          const CHUNK_SIZE = 8;
+          let currentNonce = await provider.getTransactionCount(publisherSigner.address, "pending");
 
-          if (arch === "C1") {
-            pubRes = await publisher.publishToC1(item.signedManifest);
-          } else if (arch === "C2") {
-            pubRes = await publisher.publishToC2(item.signedManifest);
-          } else {
-            pubRes = await publisher.publishToD(item.signedManifest);
-            if (pubRes.d?.gasUsed) {
-              totalGasForRun += pubRes.d.gasUsed;
-              totalCalldataForRun += pubRes.d.calldataBytes || 388;
-              totalEventBytesForRun += pubRes.d.eventBytes || 224;
-            }
-          }
-
-          const boundaryStr = arch === "D" 
-            ? (pubRes.d?.blockNumber ? `BLOCK_${pubRes.d.blockNumber}` : "BLOCK_PENDING")
-            : (arch === "C1" ? "TREE_CHECKPOINT" : "QUORUM_2_OF_3");
-
-          publicationTrials.push({
-            runId,
-            architecture: arch,
-            scenario: "NORMAL_OPERATION",
-            N: wl.N,
-            K: wl.K,
-            B: wl.B,
-            batchId: item.signedManifest.manifest.logicalBatchId,
-            submissionTime: Number(pubRes.submissionMs.toFixed(2)),
-            firstAcceptanceTime: pubRes.firstAcceptanceMs ? Number(pubRes.firstAcceptanceMs.toFixed(2)) : null,
-            quorumAcceptanceTime: pubRes.quorumAcceptanceMs ? Number(pubRes.quorumAcceptanceMs.toFixed(2)) : null,
-            evidenceCompletionTime: pubRes.evidenceCompletionMs ? Number(pubRes.evidenceCompletionMs.toFixed(2)) : null,
-            outcome: pubRes.outcome,
-            attemptCount: pubRes.attemptsAtResult || pubRes.attempts.length || 1,
-            supportingLogIds: (pubRes.supportingLogIds || []).join(";"),
-            evidenceBoundary: boundaryStr,
-          });
-
-          if (pubRes.d) {
-            publicationTraces.push({
-              runId,
-              batchId: item.signedManifest.manifest.logicalBatchId,
-              architecture: "D",
-              txHash: pubRes.d.txHash,
-              blockNumber: pubRes.d.blockNumber,
-              gasUsed: pubRes.d.gasUsed?.toString(),
-              calldataBytes: pubRes.d.calldataBytes,
-              eventBytes: pubRes.d.eventBytes,
+          for (let b = 0; b < batches.length; b += CHUNK_SIZE) {
+            const chunk = batches.slice(b, b + CHUNK_SIZE);
+            const chunkPromises = chunk.map((item, idx) => {
+              const nonce = currentNonce + idx;
+              return publisher.publishToD(item.signedManifest, { nonce }).then((pubRes) => ({ item, pubRes }));
             });
+            currentNonce += chunk.length;
+
+            const results = await Promise.all(chunkPromises);
+
+            for (const { item, pubRes } of results) {
+              if (pubRes.d?.gasUsed) {
+                totalGasForRun += pubRes.d.gasUsed;
+                totalCalldataForRun += pubRes.d.calldataBytes || 388;
+                totalEventBytesForRun += pubRes.d.eventBytes || 224;
+              }
+
+              const boundaryStr = pubRes.d?.blockNumber ? `BLOCK_${pubRes.d.blockNumber}` : "BLOCK_PENDING";
+
+              publicationTrials.push({
+                runId,
+                architecture: arch,
+                scenario: "NORMAL_OPERATION",
+                N: wl.N,
+                K: wl.K,
+                B: wl.B,
+                batchId: item.signedManifest.manifest.logicalBatchId,
+                submissionTime: Number(pubRes.submissionMs.toFixed(2)),
+                firstAcceptanceTime: pubRes.firstAcceptanceMs ? Number(pubRes.firstAcceptanceMs.toFixed(2)) : null,
+                quorumAcceptanceTime: pubRes.quorumAcceptanceMs ? Number(pubRes.quorumAcceptanceMs.toFixed(2)) : null,
+                evidenceCompletionTime: pubRes.evidenceCompletionMs ? Number(pubRes.evidenceCompletionMs.toFixed(2)) : null,
+                outcome: pubRes.outcome,
+                attemptCount: pubRes.attemptsAtResult || pubRes.attempts.length || 1,
+                supportingLogIds: (pubRes.supportingLogIds || []).join(";"),
+                evidenceBoundary: boundaryStr,
+              });
+
+              if (pubRes.d) {
+                publicationTraces.push({
+                  runId,
+                  batchId: item.signedManifest.manifest.logicalBatchId,
+                  architecture: "D",
+                  txHash: pubRes.d.txHash,
+                  blockNumber: pubRes.d.blockNumber,
+                  gasUsed: pubRes.d.gasUsed?.toString(),
+                  calldataBytes: pubRes.d.calldataBytes,
+                  eventBytes: pubRes.d.eventBytes,
+                });
+              }
+            }
+
+            const lastItem = results[results.length - 1];
+            const blockInfo = lastItem.pubRes.d?.blockNumber ? ` in block #${lastItem.pubRes.d.blockNumber}` : "";
+            console.log(`  [${wl.id}][D][Rep ${rep}/${REPETITIONS}] Batch ${Math.min(b + CHUNK_SIZE, batches.length)}/${batches.length} confirmed${blockInfo}`);
+          }
+        } else {
+          for (let b = 0; b < batches.length; b++) {
+            const item = batches[b];
+            let pubRes: any;
+
+            if (arch === "C1") {
+              pubRes = await publisher.publishToC1(item.signedManifest);
+            } else if (arch === "C2") {
+              pubRes = await publisher.publishToC2(item.signedManifest);
+            } else {
+              pubRes = await publisher.publishToD(item.signedManifest);
+              if (pubRes.d?.gasUsed) {
+                totalGasForRun += pubRes.d.gasUsed;
+                totalCalldataForRun += pubRes.d.calldataBytes || 388;
+                totalEventBytesForRun += pubRes.d.eventBytes || 224;
+              }
+            }
+
+            const boundaryStr = arch === "D" 
+              ? (pubRes.d?.blockNumber ? `BLOCK_${pubRes.d.blockNumber}` : "BLOCK_PENDING")
+              : (arch === "C1" ? "TREE_CHECKPOINT" : "QUORUM_2_OF_3");
+
+            publicationTrials.push({
+              runId,
+              architecture: arch,
+              scenario: "NORMAL_OPERATION",
+              N: wl.N,
+              K: wl.K,
+              B: wl.B,
+              batchId: item.signedManifest.manifest.logicalBatchId,
+              submissionTime: Number(pubRes.submissionMs.toFixed(2)),
+              firstAcceptanceTime: pubRes.firstAcceptanceMs ? Number(pubRes.firstAcceptanceMs.toFixed(2)) : null,
+              quorumAcceptanceTime: pubRes.quorumAcceptanceMs ? Number(pubRes.quorumAcceptanceMs.toFixed(2)) : null,
+              evidenceCompletionTime: pubRes.evidenceCompletionMs ? Number(pubRes.evidenceCompletionMs.toFixed(2)) : null,
+              outcome: pubRes.outcome,
+              attemptCount: pubRes.attemptsAtResult || pubRes.attempts.length || 1,
+              supportingLogIds: (pubRes.supportingLogIds || []).join(";"),
+              evidenceBoundary: boundaryStr,
+            });
+
+            if (pubRes.d) {
+              publicationTraces.push({
+                runId,
+                batchId: item.signedManifest.manifest.logicalBatchId,
+                architecture: "D",
+                txHash: pubRes.d.txHash,
+                blockNumber: pubRes.d.blockNumber,
+                gasUsed: pubRes.d.gasUsed?.toString(),
+                calldataBytes: pubRes.d.calldataBytes,
+                eventBytes: pubRes.d.eventBytes,
+              });
+            }
+
+            if (arch === "D" && (b + 1) % 50 === 0) {
+              const blockInfo = pubRes.d?.blockNumber ? ` in block #${pubRes.d.blockNumber}` : "";
+              console.log(`  [${wl.id}][D][Rep ${rep}/${REPETITIONS}] Batch ${b + 1}/${batches.length} confirmed${blockInfo}`);
+            }
           }
         }
 
@@ -428,16 +497,25 @@ export async function runAllBenchmarks() {
         customPublisher.setRegistry(registryContract.connect(faultRunner as any) as any, registryAdapter, provider);
         customPublisher.setValidator(verifier);
       } else if (intervention.id === "D_PROCESSING_DELAYED") {
-        customPublisher = new IndependentPublisher(logManager, { deadlineMs: 1000, lateObservationWindowMs: 3000 });
+        // On Besu, block production takes 1000ms. Setting deadlineMs to 300ms guarantees
+        // consensus confirmation will exceed deadline within the window, triggering late observation without evm_mine.
+        const delayedDeadline = besuOnline ? 300 : 1000;
+        customPublisher = new IndependentPublisher(logManager, {
+          deadlineMs: delayedDeadline,
+          lateObservationWindowMs: 6000,
+          pollIntervalMs: besuOnline ? 50 : 5,
+        });
         customPublisher.setRegistry(registryContract.connect(publisherSigner) as any, registryAdapter, provider);
         customPublisher.setValidator(verifier);
-        customPublisher.hooks.afterSubmit = () => {
-          setTimeout(async () => {
-            try {
-              if (provider.send) await provider.send("evm_mine", []);
-            } catch {}
-          }, 1200);
-        };
+        if (!besuOnline) {
+          customPublisher.hooks.afterSubmit = () => {
+            setTimeout(async () => {
+              try {
+                if (provider.send) await provider.send("evm_mine", []);
+              } catch {}
+            }, 1200);
+          };
+        }
       }
 
       for (let b = 0; b < w4Batches.length; b++) {
@@ -776,7 +854,7 @@ export async function runAllBenchmarks() {
     executionEnvironment: besuOnline ? "Hyperledger Besu QBFT 4-Node Cluster (Docker)" : "Hardhat EVM (Solidity 0.8.24 viaIR)",
     besuConfig: {
       consensus: "QBFT",
-      blockPeriodSeconds: 2,
+      blockPeriodSeconds: 1,
       epochLength: 30000,
       requestTimeoutSeconds: 4,
       chainId,

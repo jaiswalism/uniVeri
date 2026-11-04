@@ -544,7 +544,7 @@ export class IndependentPublisher {
     return n;
   }
 
-  public async publishToD(signedManifest: SignedBatchManifest): Promise<PublicationResult> {
+  public async publishToD(signedManifest: SignedBatchManifest, overrides?: any): Promise<PublicationResult> {
     const ctx = this.newCtx();
     const predicateFailure = this.validateManifestPredicate(signedManifest, "D", ctx);
     if (predicateFailure) return predicateFailure;
@@ -570,10 +570,16 @@ export class IndependentPublisher {
     try {
       // 1. Submission: the node accepts the transaction (returns a tx hash)
       const tx: any = await this.guarded(ctx, "SUBMIT_TX", "registry", () =>
-        contract.registerBatch(
-          m.logicalBatchId, m.batchContentId, m.merkleRoot, m.issuerAddress,
-          m.issuerKeyVersion, m.credentialCount, m.issuedAt, signedManifest.institutionSignature
-        )
+        overrides !== undefined
+          ? contract.registerBatch(
+              m.logicalBatchId, m.batchContentId, m.merkleRoot, m.issuerAddress,
+              m.issuerKeyVersion, m.credentialCount, m.issuedAt, signedManifest.institutionSignature,
+              overrides
+            )
+          : contract.registerBatch(
+              m.logicalBatchId, m.batchContentId, m.merkleRoot, m.issuerAddress,
+              m.issuerKeyVersion, m.credentialCount, m.issuedAt, signedManifest.institutionSignature
+            )
       );
       firstAcceptance = performance.now();
       const calldataBytes = (String(tx.data).length - 2) / 2;

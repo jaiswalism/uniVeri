@@ -16,3 +16,9 @@ dist-ui/
 .env
 *.log
 .DS_Store
+
+# Besu runtime node data
+docker/besu/validator*/data/database/
+docker/besu/validator*/data/caches/
+docker/besu/validator*/data/besu.*
+docker/besu/validator*/data/*_METADATA.json

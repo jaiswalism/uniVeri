@@ -5,35 +5,6 @@
   "signatureAlgorithm": "ECDSA (secp256k1)",
   "canonicalJsonStandard": "RFC 8785 strict subset",
   "schemaVersion": "1.0.0",
-  "workloads": [
-    { "id": "W1", "N": 1000, "K": 100, "B": 10, "description": "Small baseline" },
-    { "id": "W2", "N": 10000, "K": 100, "B": 100, "description": "N-scaling with fixed K=100" },
-    { "id": "W3", "N": 50000, "K": 100, "B": 500, "description": "Large N with small K=100 (B=500)" },
-    { "id": "W4", "N": 10000, "K": 1000, "B": 10, "description": "Moderate workload for failure experiments" },
-    { "id": "W5", "N": 50000, "K": 1000, "B": 50, "description": "Large workload with medium batch K=1000" },
-    { "id": "W6", "N": 50000, "K": 10000, "B": 5, "description": "Large workload with large batch K=10000" }
-  ],
-  "failureScenarios": [
-    { "id": "C1_SOLE_LOG_UNAVAILABLE", "arch": "C1", "desc": "Sole log unavailable (in-process endpoint failure)" },
-    { "id": "C1_SOLE_LOG_OMISSION", "arch": "C1", "desc": "Sole log acknowledges but omits inclusion evidence" },
-    { "id": "C2_ONE_LOG_UNAVAILABLE", "arch": "C2", "desc": "Log Alpha unavailable; Beta and Gamma healthy (2/3 quorum)" },
-    { "id": "C2_ONE_LOG_OMISSION", "arch": "C2", "desc": "Log Alpha omits inclusion; Beta and Gamma healthy (2/3 quorum)" },
-    { "id": "D_ENDPOINT_UNAVAILABLE", "arch": "D", "desc": "Blockchain endpoint unavailable (in-process mock fault)" },
-    { "id": "D_PROCESSING_DELAYED", "arch": "D", "desc": "Transaction processing delayed past deadline" }
-  ],
-  "totalWorkloadRuns": 240,
-  "totalScheduledBatchTrials": 20850,
-  "repetitionsPerRun": 10,
-  "quorumRequirement": "2-of-3",
-  "retryPolicy": {
-    "maxAttempts": 3,
-    "deadlineMs": 1000,
-    "initialBackoffMs": 10,
-    "backoffMultiplier": 2
-  },
-  "gasMeasuredViaEVM": true,
-  "evmContractAddress": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-  "evmChainId": 1337,
   "executionEnvironment": "Hyperledger Besu QBFT 4-Node Cluster (Docker)",
   "besuConfig": {
     "consensus": "QBFT",
@@ -45,34 +16,7 @@
     "contractAddress": "0x5FbDB2315678afecb367f032d93F642f64180aa3"
   },
   "cgroupResourceCollection": true,
-  "timestamp": "2026-11-04T22:33:43.305Z",
-  "lateObservationWindowMs": 3000,
-  "sourceRevision": "univeri-v4-containerized-testbed",
-  "transportDescription": "Multi-container Docker cluster (Besu 4-node QBFT + 4 standalone log daemons) with fallback to local JSON-RPC EVM provider",
-  "warmup": {
-    "count": 3,
-    "workload": "did:edu:warmup (N=10, K=5, B=2, 3 architectures)",
-    "purpose": "Prime EVM JIT, JSON serializers, and Merkle tree engines"
-  },
-  "executionOrderSchedule": [
-    { "repetition": 1, "order": ["C1", "C2", "D"] },
-    { "repetition": 2, "order": ["C2", "D", "C1"] },
-    { "repetition": 3, "order": ["D", "C1", "C2"] },
-    { "repetition": 4, "order": ["C1", "C2", "D"] },
-    { "repetition": 5, "order": ["C2", "D", "C1"] },
-    { "repetition": 6, "order": ["D", "C1", "C2"] },
-    { "repetition": 7, "order": ["C1", "C2", "D"] },
-    { "repetition": 8, "order": ["C2", "D", "C1"] },
-    { "repetition": 9, "order": ["D", "C1", "C2"] },
-    { "repetition": 10, "order": ["C1", "C2", "D"] }
-  ],
-  "fixed50kInput": {
-    "issuerId": "did:edu:mit-fixed50k",
-    "description": "Fixed synthetic certificate dataset of 50,000 credentials reused identically across W3, W5, and W6"
-  },
-  "statisticalMethod": "Student's t-distribution on run-level repetition means",
-  "confidenceLevel": "95%",
-  "tCriticalValue": 2.262,
-  "degreesOfFreedom": 9,
-  "intervalProcedure": "runMean +/- (tCrit * runStdDev / sqrt(repetitions))"
+  "totalWorkloadRuns": 240,
+  "totalScheduledBatchTrials": 20850,
+  "timestamp": "2026-11-05T01:18:38.792Z"
 }

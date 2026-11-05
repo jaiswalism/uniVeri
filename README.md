@@ -1,6 +1,6 @@
 # uniVeri: Academic Certificate Verification & Comparative Publication Architecture
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Proprietary / All Rights Reserved](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636.svg)](https://soliditylang.org/)
 [![Hardhat](https://img.shields.io/badge/Hardhat-2.22-yellow.svg)](https://hardhat.org/)
@@ -19,13 +19,13 @@
 
 ```mermaid
 flowchart TD
-    subgraph Issuer ["1. Academic Institution - Issuer"]
-        Cert["Academic Certificate - JSON"] --> Salt["High-Entropy Salt"]
-        Salt --> Comm["Privacy Commitment: SHA256 of Canonical Cert and Salt"]
-        Comm --> Leaves["Batch of Leaves - K Certificates"]
+    subgraph Issuer ["1. Academic Institution (Issuer)"]
+        Cert["Academic Certificate (JSON)"] --> Salt["High-Entropy Salt"]
+        Salt --> Comm["Privacy Commitment: SHA256(Canonical(Cert) || Salt)"]
+        Comm --> Leaves["Batch of Leaves (K Certificates)"]
         Leaves --> MT["Binary Merkle Tree"]
-        MT --> Root["Merkle Root - Content ID"]
-        Root --> Sign["ECDSA Secp256k1 Signature - Manifest"]
+        MT --> Root["Merkle Root (Content ID)"]
+        Root --> Sign["ECDSA Secp256k1 Signature (Manifest)"]
     end
 
     subgraph Pub ["2. Common Independent Publisher"]
@@ -33,23 +33,23 @@ flowchart TD
     end
 
     subgraph C1 ["Architecture C1: Single Log"]
-        Adapter -->|"Submit Batch: Port 9001"| LogPrimary["Transparency Log Daemon - Port 9001"]
-        LogPrimary --> STH1["Signed Tree Head - STH and Merkle Audit Path"]
+        Adapter -->|Submit Batch| LogPrimary["Transparency Log Daemon (Port 9001)"]
+        LogPrimary --> STH1["Signed Tree Head (STH) + Merkle Audit Path"]
     end
 
     subgraph C2 ["Architecture C2: 3-Log Quorum"]
-        Adapter -->|"Submit Batch: Ports 9002-9004"| Cluster["Log Alpha, Beta, Gamma"]
+        Adapter -->|Submit Batch| Cluster["Log Alpha (9002) / Beta (9003) / Gamma (9004)"]
         Cluster --> Quorum["2-of-3 Quorum Verification Proofs"]
     end
 
     subgraph D ["Architecture D: 4-Node Besu QBFT Cluster"]
-        Adapter -->|"EVM Tx: Port 8545"| BesuCluster["Hyperledger Besu 4-Node QBFT"]
+        Adapter -->|EVM Tx (Port 8545)| BesuCluster["Hyperledger Besu 4-Node QBFT"]
         BesuCluster --> SmartContract["AcademicCertificateRegistry.sol"]
-        SmartContract --> EVMState["State Slots: ecrecover and Finality"]
+        SmartContract --> EVMState["State Slots: ecrecover + Finality"]
     end
 
     subgraph Verifier ["3. Common Verifier Engine"]
-        STH1 --> VEngine["Evidence Retriever and Evaluator"]
+        STH1 --> VEngine["Evidence Retriever & Evaluator"]
         Quorum --> VEngine
         EVMState --> VEngine
         VEngine --> Verdict["Decision Matrix: AUTHENTIC / NOT_AUTHENTIC / REVOKED / SAFE UNCERTAINTY"]
@@ -58,200 +58,74 @@ flowchart TD
 
 ---
 
-## Section 4 Benchmark Setup & Testbed Environment
+## Key Features
 
-### 1. Hardware & Host Environment
-* **CPU Model:** AMD Ryzen 5 5600H with Radeon Graphics (6 Physical Cores, 12 Logical Processors, Base 3.3 GHz, Boost 4.2 GHz).
-* **RAM:** 16 GB DDR4 (15.4 GB usable).
-* **Disk Type:** 512 GB NVMe PCIe 3.0 x4 M.2 Solid State Drive (`INTEL SSDPEKNU512GZ`).
-* **Operating System:** Windows 11 Home Single Language 64-bit (Build 26200 / 24H2) with WSL2 Linux virtualization backend.
-* **Docker Engine:** Docker Desktop 4.93.0 / Docker Engine `v29.8.1` (API `v1.56`, containerd `v2.3.5`, runc `v1.5.1`).
-* **Host Topology:** All 8 containers run on a single host connected via an isolated Docker bridge network (`testbed-net`, subnet `172.28.0.0/16`).
-* **CPU Pinning & Resource Quotas:** No rigid core pinning (`cpuset_cpus`) is enforced to allow the CFS scheduler to utilize all 12 threads. Per-container CFS limits in [`docker-compose.testbed.yml`](docker-compose.testbed.yml):
-  * Besu Nodes (`besu-node-1` to `besu-node-4`): `cpus: "2.0"`, `mem_limit: 4g`.
-  * Log Daemons (`log-c1-primary`, `log-c2-alpha`, `beta`, `gamma`): Alpine Node.js 22 containers with baseline memory $\sim 50\text{ MB}$ RSS each.
+### 1. Common Cryptographic Core & Privacy Protection
+- **RFC 8785 Canonical JSON Serialization:** Deterministic byte-exact hashing regardless of JSON key order.
+- **Privacy-Preserving Commitments:** Raw student personal identifiable information (PII) never leaves the institution. Only `SHA256(Canonical(Cert) || Salt)` leaves enter the public Merkle tree.
+- **Binary Merkle Tree:** Deterministic sorted leaf pairing, leaf hashing (`0x00` prefix), and node hashing (`0x01` prefix) with verifiable inclusion proofs.
+- **Institutional ECDSA Signatures:** secp256k1 institutional signatures verified on-chain via `ecrecover` and off-chain via ethers.js.
 
-### 2. Software Versions & Consensus Specifications
-* **Hyperledger Besu (Architecture D):** `hyperledger/besu:24.7.0` running OpenJDK 64-Bit Server VM (`21.0.3+9-Ubuntu-1ubuntu1`).
-* **QBFT Consensus Configuration ([`docker/besu/genesis.json`](docker/besu/genesis.json)):**
-  * Chain ID: `1337`
-  * Block Period: `1` second (`"blockperiodseconds": 1` for responsive transaction throughput)
-  * Epoch Length: `30000` blocks
-  * Request Timeout: `4` seconds (`"requesttimeoutseconds": 4`)
-  * Gas Limit: `0x1fffffffffffff` ($9 \times 10^{15}$, effectively unconstrained private block capacity)
-  * Validators (4 nodes, $3F+1$ where $F=1$):
-    * Validator 1: `0x3b79973376f98755a8e234896c11e6c6244315bd` (`172.28.0.11:8545`)
-    * Validator 2: `0x627306090abab3a6e1400e9345bc60c78a8bef57` (`172.28.0.12`)
-    * Validator 3: `0xd6f74e6ecefcb79cf13a10ec745a735602a87341` (`172.28.0.13`)
-    * Validator 4: `0xb5bfc954cb2d17a2d65f72ba7a1986eba79f2365` (`172.28.0.14`)
-* **Solidity & EVM Compiler:**
-  * Solidity Version: `0.8.24`
-  * Optimizer: Enabled, `runs: 200`
-  * Intermediate Representation: `viaIR: true`
-  * Target EVM: London / Cancun EVM rules
-* **Log Daemons & Verifier Runtimes:**
-  * Host Runtime: Node.js `v22.12.0` / TypeScript `5.7.2` via `tsx`
-  * Web3 & Cryptography: `ethers.js v6.13.4` (secp256k1 ECDSA, `ecrecover`, `verifyMessage`)
-  * Canonical JSON: Deterministic strict subset of **RFC 8785** (`src/core/canonical.ts`)
-  * REST Daemon Framework: Express `v4.21.2`, CORS `v2.8.5`
+### 2. Multi-Container Testbed Environment
+- **Architecture D (4-Node Hyperledger Besu QBFT Cluster):**
+  - 4 validator nodes (`besu-node-1` to `besu-node-4`) with deterministic QBFT genesis configuration:
+    - 1-second block period (`blockperiodseconds: 1`)
+    - 30,000 block epoch length (`epochlength: 30000`)
+    - 4-second request timeout (`requesttimeoutseconds: 4`)
+  - Enforced per-container resource boundaries: `cpus: "2.0"`, `mem_limit: 4g`.
+- **Architectures C1 and C2 (Standalone REST Log Daemons):**
+  - Standalone Node.js/Express service containers (`services/log-daemon/`):
+    - `log-c1-primary` on Port `9001`
+    - `log-c2-alpha` on Port `9002`, `log-c2-beta` on Port `9003`, `log-c2-gamma` on Port `9004` (2-of-3 quorum).
+  - Genuine REST endpoints: `/v1/manifests`, `/v1/proofs/:batchContentId`, `/v1/checkpoint`, and `/v1/admin/fault`.
+- **Network Link Delay Emulation (`tc netem`):**
+  - Kernel-level packet delay enforcement via [`scripts/setup-netem.sh`](scripts/setup-netem.sh) applying configurable link delays $\Delta \in \{20\text{ ms}, 50\text{ ms}\}$.
 
-### 3. Network Emulation & Timers
-* **Network Link Delay ($\Delta$):** Applied via [`scripts/setup-netem.sh`](scripts/setup-netem.sh) on bridge interface `172.28.0.1`:
-  * Baseline condition: **$\Delta = 20\text{ ms} \pm 5\text{ ms}$ (25% correlation)**
-  * High-latency condition: **$\Delta = 50\text{ ms} \pm 10\text{ ms}$**
-* **Timeout Thresholds ($T$):**
-  * $T_\text{deadline}$: $1,000\text{ ms}$ (C1/C2) / $6,000\text{ ms}$ (Besu D to accommodate 1s block mining and finality).
-  * $T_\text{late}$ (Late Observation Window): $3,000\text{ ms}$ (C1/C2) / $12,000\text{ ms}$ (Besu D).
-* **Publisher Release Rates:**
-  * **C1 Single Log:** Sequential HTTP burst dispatch ($\sim 40\text{–}100\text{ batches/sec}$).
-  * **C2 3-Log Quorum:** Parallel 3-endpoint dispatch requiring 2-of-3 quorum ($\sim 25\text{–}40\text{ batches/sec}$).
-  * **D Besu QBFT:** Concurrent mempool batching (`CHUNK_SIZE = 8` pending transactions per 1s block) yielding $\sim 8\text{–}15\text{ batches/sec}$.
+### 3. Evaluated Publication Architectures
+| Property | C1: Single Transparency Log | C2: 3-Log 2-of-3 Quorum | D: Hyperledger Besu QBFT Registry |
+|---|---|---|---|
+| **Publication Method** | HTTP REST Log Service (`:9001`) | Multi-Log Cluster Orchestration (`:9002–9004`) | Live QBFT Transaction (`:8545`, `registerBatch`) |
+| **Consensus / Trust** | Single Log Operator | Decentralized Quorum (2-of-3) | QBFT Byzantine Fault Tolerant Consensus |
+| **Evidence Artifact** | Signed Tree Head (STH) + Audit Path | Distinct Multi-Log Inclusions | Block Finality + Transaction Receipt |
+| **Fault Tolerance** | Zero tolerance to log downtime | Resilient to single log outage/omission | Resilient to 1 Byzantine/failed validator ($F < N/3$) |
+| **Cost Profile** | Zero on-chain fees | Zero on-chain fees | ~183k to 328k Gas per batch |
+| **Verification Speed** | Fast (~55 ms median) | Fast (~70 ms median) | Ultra-fast local/RPC query (~21 ms) |
 
----
+### 4. Executable Fault Injection Suite
+The testbed includes executable fault injectors in [`scripts/faults/`](scripts/faults/):
+- **D-F2b (`fault-d-f2b-stop-proposer.ts`):** Dynamically computes the active QBFT round leader/proposer:
+  $$\text{ProposerIndex} = (\text{blockNumber} + \text{round}) \pmod N$$
+  and executes `docker pause` / `docker stop` on that specific validator container to induce consensus round changes.
+- **D-F5 (`fault-d-f5-rpc-proxy.ts`):** High-performance intercepting proxy on port 8547 that drops connections or returns HTTP 503 errors to test client resilience without killing nodes.
+- **C1 & C2 REST Fault Controllers (`fault-c1-omission.ts`, `fault-c2-quorum-failure.ts`):** Programmatic fault toggles for HTTP 503 outages, omission attacks, and stale checkpoint injection.
 
-## Smart Contract & Log Daemons
-
-### Smart Contract: [`AcademicCertificateRegistry.sol`](contracts/AcademicCertificateRegistry.sol)
-* **`registerBatch(...)`:** Accepts batch Merkle root, logical batch ID, batch content ID, credential count, and institutional signature. Validates the signature on-chain via `ecrecover` against registered institutions, stores the record in `batchesByContentId`, registers the canonical `logicalBatchToContentId` pointer, and records `registeredBlockNumber` and `registeredAt`.
-* **Equivalence & Conflict Detection:** Enforces append-only immutability. If an institution attempts to associate an existing `logicalBatchId` with a different `batchContentId`, the contract emits a `BatchConflictDetected` audit event.
-* **`revokeBatch(...)`:** Supports institutional cryptographic revocation events and authorized caller revocation.
-
-### Transparency Log Daemons: [`services/log-daemon/server.ts`](services/log-daemon/server.ts)
-* Standalone Express microservices exposing RFC 6962-style endpoints:
-  * `POST /v1/manifests`: Receives institutional signed manifests, appends them to the binary Merkle tree, and returns receipt acknowledgments.
-  * `GET /v1/proofs/:batchContentId`: Computes and returns Merkle inclusion audit paths bound to the latest Signed Tree Checkpoint.
-  * `GET /v1/checkpoint`: Returns operator-signed tree checkpoint (`SignedTreeCheckpoint`).
-  * `GET /v1/status/:batchContentId`: Returns all revocation observations with cryptographic inclusion proofs.
-  * `POST /v1/admin/fault`: Programmatic fault injection API (`unavailable`, `censorAll`, `readOmitProof`, `staleCheckpointAgeSec`).
-  * `POST /v1/admin/reset`: Clears engine state between repetition runs.
-
----
-
-## Executable Fault Injection Suite (Table 3)
-
-| Fault ID | Script / Endpoint | Failure Semantics |
-|---|---|---|
-| **C1-F1** | `logManager.logC1.setFailureOptions({ unavailable: true })` | HTTP 503 outage on write and read paths. Publisher retries with exponential backoff. |
-| **C1-F2** | `logManager.logC1.setFailureOptions({ acknowledgeButOmit: true })` | Write succeeds (HTTP 200 ACK) but log never incorporates entry into tree; read times out. |
-| **C2-F1** | `logManager.logC2A.setFailureOptions({ unavailable: true })` | Log Alpha fails with HTTP 503; Beta and Gamma satisfy 2-of-3 quorum without degradation. |
-| **C2-F2** | `logManager.logC2A.setFailureOptions({ readOmitProof: true })` | Alpha ACKs write but drops read proofs; verifier reaches safe quorum from Beta and Gamma. |
-| **D-F1 / D-F5** | [`scripts/faults/fault-d-f5-rpc-proxy.ts`](scripts/faults/fault-d-f5-rpc-proxy.ts) | Intercepting proxy on port 8547 that drops connections (`req.socket.destroy()`) or returns HTTP 503 without killing Besu nodes. |
-| **D-F2b** | [`scripts/faults/fault-d-f2b-stop-proposer.ts`](scripts/faults/fault-d-f2b-stop-proposer.ts) | Dynamically queries current head block, computes active QBFT round proposer ($\text{Index} = (\text{blockNumber} + 1) \pmod 4$), and pauses that validator container to force a consensus view change. |
+### 5. Formal Verification Vocabulary & Safe Uncertainty Semantics
+The verification engine strictly adheres to standardized security semantics:
+- **`AUTHENTIC`**: Cryptographic integrity valid, issuer signature verified, evidence proven in target publication architecture, and active status confirmed.
+- **`NOT_AUTHENTIC`**: Signature invalid, Merkle proof mismatch, or corrupted commitment.
+- **`REVOKED_AS_OF_EVIDENCE`**: Explicit on-chain revocation or revocation log entry verified.
+- **`SAFE UNCERTAINTY` (`STATUS_UNKNOWN`)**: Correctly distinguishes complete proof of validity vs. degraded network states (e.g., when a log is omitted in C2, producing safe partial evidence rather than false assertions).
 
 ---
 
 ## Experimental Benchmark Engine & Results
 
-The testbed evaluates **240 total runs** (180 normal runs across workloads W1–W6 $\times$ 3 architectures $\times$ 10 repetitions, plus 60 failure runs):
+The repository includes a comprehensive benchmark suite evaluated across a 240-run matrix:
+- **Workload Sizes:** Workloads W1–W6 scaling $N \in \{1,000, 10,000, 50,000\}$ certificates and $K \in \{100, 1,000, 10,000\}$ batch sizes.
+- **Failure Interventions:** 6 fault injection scenarios (C1 Log Outage, C1 Omission, C2 Single Log Outage, C2 Single Log Omission, D RPC Outage, D Proposer Stop/Delay).
+- **Execution Scale:** **20,850 publication trials**, **180 verification queries**, **1,800 cgroup resource samples** with real container CPU and memory counters, and **8 Section 5 correctness tests** (all passing).
 
-### Execution Scale
-* **20,850 Total Publication Trials** recorded with nanosecond-resolution submission and completion timestamps.
-* **180 Verification Queries** measuring cold vs. warm cache retrieval and local verification latencies.
-* **1,800 Cgroup Resource Measurements** capturing real container CPU percentages and memory bytes alongside EVM gas counters.
-* **8 Phase 3 Correctness Tests** proving formal verification security and safe uncertainty semantics.
-
-### Phase 3 Correctness Test Suite ([`results/correctness_tests.csv`](results/correctness_tests.csv))
-
-All 8 security correctness and safe uncertainty test cases pass (**8/8 `PASS`**):
-
-| Test ID | Description | Architecture | Expected Auth | Observed Auth | Expected Pub | Observed Pub | Expected Status | Observed Status | Verdict |
-|---|---|---|---|---|---|---|---|---|---|
-| **TC-1** | Unmodified certificate with sufficient publication evidence | C1 | `AUTHENTIC` | `AUTHENTIC` | `PUBLISHED` | `PUBLISHED` | `NO_REVOCATION_OBSERVED` | `NO_REVOCATION_OBSERVED` | **PASS** |
-| **TC-2** | Modified certificate claim | C1 | `NOT_AUTHENTIC` | `NOT_AUTHENTIC` | `PUBLISHED` | `PUBLISHED` | `NO_REVOCATION_OBSERVED` | `NO_REVOCATION_OBSERVED` | **PASS** |
-| **TC-3** | Invalid Merkle proof path | C1 | `NOT_AUTHENTIC` | `NOT_AUTHENTIC` | `PUBLISHED` | `PUBLISHED` | `NO_REVOCATION_OBSERVED` | `NO_REVOCATION_OBSERVED` | **PASS** |
-| **TC-4** | Invalid institution signature | C1 | `NOT_AUTHENTIC` | `NOT_AUTHENTIC` | `INSUFFICIENT_EVIDENCE` | `INSUFFICIENT_EVIDENCE` | `STATUS_UNKNOWN` | `STATUS_UNKNOWN` | **PASS** |
-| **TC-5** | Valid certificate but unavailable publication evidence | C1 | `AUTHENTIC` | `AUTHENTIC` | `INSUFFICIENT_EVIDENCE` | `INSUFFICIENT_EVIDENCE` | `STATUS_UNKNOWN` | `STATUS_UNKNOWN` | **PASS** |
-| **TC-6** | Genuinely signed stale checkpoint (>300s) | C1 | `AUTHENTIC` | `AUTHENTIC` | `STALE_EVIDENCE` | `STALE_EVIDENCE` | `STATUS_UNKNOWN` | `STATUS_UNKNOWN` | **PASS** |
-| **TC-7** | Verified institution-authorized revocation | D | `AUTHENTIC` | `AUTHENTIC` | `PUBLISHED` | `PUBLISHED` | `REVOKED_AS_OF_EVIDENCE` | `REVOKED_AS_OF_EVIDENCE` | **PASS** |
-| **TC-8** | Two C2 issuance proofs while Alpha is unavailable | C2 | `AUTHENTIC` | `AUTHENTIC` | `PUBLISHED` | `PUBLISHED` | `STATUS_UNKNOWN` | `STATUS_UNKNOWN` | **PASS** |
-
-### Verified Gas Figures & Resource Measurements
-From transaction receipt traces ([`results/publication_traces.json`](results/publication_traces.json)):
-* **Calldata Size:** `388` bytes per `registerBatch` transaction
-* **Event Log Data:** `224` bytes (`BatchRegistered` event topic and abi-encoded data)
-* **Gas Consumption:**
-  * Minimum: **294,299 gas**
-  * Median: **294,323 gas**
-  * Maximum: **294,351 gas**
+### Artifacts Generated
+All raw data artifacts strictly conform to the research specifications in [`results/`](results/):
+- [`results/run_config.json`](results/run_config.json): Reproducibility parameters, Besu QBFT configuration, retry policies, and SHA-256 hashes.
+- [`results/publication_trials.csv`](results/publication_trials.csv): 20,850 batch trial records with nanosecond submission and acceptance timestamps.
+- [`results/verification_queries.csv`](results/verification_queries.csv): Retrieval and verification latencies under fresh and cached network conditions.
+- [`results/resource_measurements.csv`](results/resource_measurements.csv): Container cgroup CPU percentage and memory bytes alongside EVM gas counters.
+- [`results/correctness_tests.csv`](results/correctness_tests.csv): 8/8 passing security correctness and safe uncertainty test cases.
 
 ---
 
-## Getting Started
-
-### Prerequisites
-* **Node.js**: `v20.0.0` or higher (`v22` recommended)
-* **Docker Desktop**: With Compose support and WSL2 backend (Windows/Linux)
-
-### Installation
-```bash
-# Clone the repository
-git clone https://github.com/jaiswalism/uniVeri.git
-cd uniVeri
-
-# Install dependencies
-npm install
-
-# Compile Solidity contracts and generate Typechain definitions
-npm run compile
-
-# Build TypeScript codebase
-npm run build
-```
-
-### Running Tests
-```bash
-# Run all tests (Hardhat contracts + Vitest cryptographic & artifact suites)
-npm test
-
-# Run contract tests only
-npm run test:contracts
-```
-
----
-
-## Running the Multi-Container Testbed & Benchmarks
-
-1. **Start the Multi-Container Cluster (4 Besu Nodes + 4 Log Daemons):**
-   ```bash
-   docker compose -f docker-compose.testbed.yml up -d --build
-   ```
-
-2. **Verify Cluster Health:**
-   ```bash
-   # Check Besu QBFT JSON-RPC
-   curl -X POST http://127.0.0.1:8545 -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
-   
-   # Check Log Daemons
-   curl http://127.0.0.1:9001/health
-   curl http://127.0.0.1:9002/health
-   ```
-
-3. **Execute the Benchmarking Suite:**
-   ```bash
-   # Execute the complete 240-run benchmark across all architectures (W1–W6, 10 reps)
-   npm run benchmark:testbed
-
-   # Or run the Section 5 Correctness Suite (TC-1 to TC-8) standalone against the live cluster (~25s)
-   npm run benchmark:correctness
-   ```
-
-4. **Audit Generated Artifacts:**
-   ```bash
-   npm run validate:artifacts
-   ```
-
-5. **Execute Fault Injections:**
-   ```bash
-   # Stop the active QBFT round leader dynamically (D-F2b)
-   npm run fault:proposer
-
-   # Start RPC connection drop proxy on port 8547 (D-F5)
-   npm run fault:proxy
-   ```
-
----
-
-## Repository Structure
+## Project Structure
 
 ```
 uniVeri/
@@ -269,7 +143,7 @@ uniVeri/
 │   ├── setup-netem.sh                      # Kernel tc netem network emulation script
 │   ├── cgroup-collector.ts                 # Docker container stats / cgroup metrics sampler
 │   └── faults/                             # Real-world fault injection scripts
-│       ├── fault-d-f2b-stop-proposer.ts    # Halts active QBFT round proposer dynamically
+│       ├── fault-d-f2b-stop-proposer.ts    # Halts active QBFT round proposer
 │       ├── fault-d-f5-rpc-proxy.ts         # Injects RPC connection drops on port 8547
 │       ├── fault-c1-omission.ts            # C1 omission & stale checkpoint injector
 │       └── fault-c2-quorum-failure.ts      # C2 single log failure injector
@@ -288,6 +162,83 @@ uniVeri/
 
 ---
 
-## License
+## Getting Started
 
-This project is licensed under the [MIT License](LICENSE).
+### Prerequisites
+- **Node.js**: v18.0.0 or higher (v20+ recommended)
+- **Docker Desktop**: With Docker Compose support (for containerized testbed)
+
+### Installation
+```bash
+# Clone the repository
+git clone https://github.com/jaiswalism/uniVeri.git
+cd uniVeri
+
+# Install dependencies
+npm install
+```
+
+### Build & Compile
+```bash
+# Compile Solidity contracts and generate Typechain definitions
+npm run compile
+
+# Build TypeScript codebase
+npm run build
+```
+
+### Running Tests
+```bash
+# Run all tests (Hardhat contracts + Vitest cryptographic & artifact suites)
+npm test
+
+# Run contract tests only
+npm run test:contracts
+```
+
+### Running the Multi-Container Testbed & Benchmarks
+
+1. **Start the Multi-Container Cluster:**
+   ```bash
+   docker compose -f docker-compose.testbed.yml up -d --build
+   ```
+
+2. **Verify Cluster Health:**
+   ```bash
+   # Check Besu JSON-RPC
+   curl -X POST http://127.0.0.1:8545 -H "Content-Type: application/json" -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+   
+   # Check Log Daemons
+   curl http://127.0.0.1:9001/v1/checkpoint
+   ```
+
+3. **Execute the Benchmarking Suite:**
+   ```bash
+   # Execute the complete benchmark across all architectures and workloads (W1–W6, 10 reps)
+   npm run benchmark:testbed
+
+   # Or execute the Section 5 Correctness Suite (TC-1 to TC-8) standalone against the live cluster
+   npm run benchmark:correctness
+   ```
+
+4. **Execute Fault Injections:**
+   ```bash
+   # Stop the active QBFT round leader
+   npm run fault:proposer
+   
+   # Start RPC connection drop proxy
+   npm run fault:proxy
+   ```
+
+---
+
+## License & Intellectual Property
+
+**Copyright © 2026 Shyam Jaiswal. All Rights Reserved.**
+
+This repository, its research specifications, smart contracts, log engines, testbed implementations, and benchmarking datasets are proprietary. 
+
+**Strictly No Permission:** No individual, institution, or organization is granted permission to use, copy, modify, distribute, publish, sublicense, deploy, or create derivative works of this software, in whole or in part, for commercial, academic, personal, or benchmarking purposes, without prior express written authorization from the copyright holder.
+
+For inquiries or formal authorization requests, please contact:
+**Shyam Jaiswal** (`sj1464@srmist.edu.in`)

@@ -29,8 +29,8 @@
     "solidity",
     "research"
   ],
-  "author": "",
-  "license": "MIT",
+  "author": "Shyam Jaiswal <hello@shyamjaiswal.in>",
+  "license": "UNLICENSED",
   "dependencies": {
     "cors": "^2.8.5",
     "ethers": "^6.13.4",

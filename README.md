@@ -241,4 +241,4 @@ This repository, its research specifications, smart contracts, log engines, test
 **Strictly No Permission:** No individual, institution, or organization is granted permission to use, copy, modify, distribute, publish, sublicense, deploy, or create derivative works of this software, in whole or in part, for commercial, academic, personal, or benchmarking purposes, without prior express written authorization from the copyright holder.
 
 For inquiries or formal authorization requests, please contact:
-**Shyam Jaiswal** (`sj1464@srmist.edu.in`)
+**Shyam Jaiswal** (`hello@shyamjaiswal.in`)

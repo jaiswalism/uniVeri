@@ -1,6 +1,6 @@
 # uniVeri: Academic Certificate Verification & Comparative Publication Architecture
 
-[![License: Proprietary / All Rights Reserved](https://img.shields.io/badge/License-All%20Rights%20Reserved-red.svg)](LICENSE)
+[![License: Research & Study (With Reference)](https://img.shields.io/badge/License-Research%20%26%20Study%20(With%20Reference)-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![Solidity](https://img.shields.io/badge/Solidity-0.8.24-363636.svg)](https://soliditylang.org/)
 [![Hardhat](https://img.shields.io/badge/Hardhat-2.22-yellow.svg)](https://hardhat.org/)
@@ -19,13 +19,13 @@
 
 ```mermaid
 flowchart TD
-    subgraph Issuer ["1. Academic Institution (Issuer)"]
-        Cert["Academic Certificate (JSON)"] --> Salt["High-Entropy Salt"]
-        Salt --> Comm["Privacy Commitment: SHA256(Canonical(Cert) || Salt)"]
-        Comm --> Leaves["Batch of Leaves (K Certificates)"]
+    subgraph Issuer ["1. Academic Institution - Issuer"]
+        Cert["Academic Certificate - JSON"] --> Salt["High-Entropy Salt"]
+        Salt --> Comm["Privacy Commitment: SHA256 of Canonical Cert and Salt"]
+        Comm --> Leaves["Batch of Leaves - K Certificates"]
         Leaves --> MT["Binary Merkle Tree"]
-        MT --> Root["Merkle Root (Content ID)"]
-        Root --> Sign["ECDSA Secp256k1 Signature (Manifest)"]
+        MT --> Root["Merkle Root - Content ID"]
+        Root --> Sign["ECDSA Secp256k1 Signature - Manifest"]
     end
 
     subgraph Pub ["2. Common Independent Publisher"]
@@ -33,23 +33,23 @@ flowchart TD
     end
 
     subgraph C1 ["Architecture C1: Single Log"]
-        Adapter -->|Submit Batch| LogPrimary["Transparency Log Daemon (Port 9001)"]
-        LogPrimary --> STH1["Signed Tree Head (STH) + Merkle Audit Path"]
+        Adapter -->|"Submit Batch - Port 9001"| LogPrimary["Transparency Log Daemon - Port 9001"]
+        LogPrimary --> STH1["Signed Tree Head and Merkle Audit Path"]
     end
 
     subgraph C2 ["Architecture C2: 3-Log Quorum"]
-        Adapter -->|Submit Batch| Cluster["Log Alpha (9002) / Beta (9003) / Gamma (9004)"]
+        Adapter -->|"Submit Batch - Ports 9002-9004"| Cluster["Log Alpha, Beta, Gamma"]
         Cluster --> Quorum["2-of-3 Quorum Verification Proofs"]
     end
 
     subgraph D ["Architecture D: 4-Node Besu QBFT Cluster"]
-        Adapter -->|EVM Tx (Port 8545)| BesuCluster["Hyperledger Besu 4-Node QBFT"]
+        Adapter -->|"EVM Tx - Port 8545"| BesuCluster["Hyperledger Besu 4-Node QBFT"]
         BesuCluster --> SmartContract["AcademicCertificateRegistry.sol"]
-        SmartContract --> EVMState["State Slots: ecrecover + Finality"]
+        SmartContract --> EVMState["State Slots: ecrecover and Finality"]
     end
 
     subgraph Verifier ["3. Common Verifier Engine"]
-        STH1 --> VEngine["Evidence Retriever & Evaluator"]
+        STH1 --> VEngine["Evidence Retriever and Evaluator"]
         Quorum --> VEngine
         EVMState --> VEngine
         VEngine --> Verdict["Decision Matrix: AUTHENTIC / NOT_AUTHENTIC / REVOKED / SAFE UNCERTAINTY"]
@@ -232,13 +232,31 @@ npm run test:contracts
 
 ---
 
-## License & Intellectual Property
+## License & Citation
 
 **Copyright © 2026 Shyam Jaiswal. All Rights Reserved.**
 
-This repository, its research specifications, smart contracts, log engines, testbed implementations, and benchmarking datasets are proprietary. 
+This repository, its research specifications, smart contracts, log engines, testbed implementations, and benchmarking datasets are shared under the **uniVeri Research & Academic Evaluation License**:
 
-**Strictly No Permission:** No individual, institution, or organization is granted permission to use, copy, modify, distribute, publish, sublicense, deploy, or create derivative works of this software, in whole or in part, for commercial, academic, personal, or benchmarking purposes, without prior express written authorization from the copyright holder.
+* **Permitted Use (Research & Study):** Free to access, inspect, run, benchmark, and evaluate solely for non-commercial academic research, study, and educational purposes.
+* **Mandatory Reference & Attribution:** Any research publication, thesis, conference paper, presentation, or article that references, studies, benchmarks, or uses this architecture, implementation, or datasets **must provide clear and explicit attribution referencing this repository and the author**.
+* **Strictly No Unreferenced Recreation:** Recreating, cloning, re-hosting, or publishing this codebase, architecture, smart contracts, or benchmark datasets—in whole or in part—without explicit reference, attribution, and citation to the original author is strictly prohibited.
+* **Commercial Use:** Any commercial use, licensing, or integration into commercial offerings requires prior written authorization from the copyright holder.
 
-For inquiries or formal authorization requests, please contact:
+### Suggested Citation
+
+If you use or reference this work in your research or study, please cite:
+
+```bibtex
+@misc{jaiswal2026univeri,
+  author = {Shyam Jaiswal},
+  title = {uniVeri: High-Integrity Academic Certificate Verification & Comparative Publication Architecture},
+  year = {2026},
+  publisher = {GitHub},
+  howpublished = {\url{https://github.com/jaiswalism/uniVeri}},
+  note = {Research & Study License with Mandatory Attribution}
+}
+```
+
+For permissions or licensing inquiries, contact:
 **Shyam Jaiswal** (`hello@shyamjaiswal.in`)

@@ -1,10 +1,22 @@
 Copyright (c) 2026 Shyam Jaiswal. All Rights Reserved.
 
-This software, research specifications, testbed implementations, and associated benchmark artifacts (the "Software") are proprietary and protected by copyright law.
+uniVeri Research & Academic Evaluation License
 
-No permission is granted to any person or entity to use, copy, modify, merge, publish, distribute, sublicense, sell, reverse-engineer, benchmark externally, or create derivative works of this Software, in whole or in part, for any commercial, academic, personal, or institutional purpose, without the prior express written permission of the copyright holder.
+Permission is hereby granted to any person or institution to access, run, inspect, and evaluate this software, research specifications, and associated benchmark artifacts ("Software") solely for NON-COMMERCIAL RESEARCH AND STUDY PURPOSES, subject to the following mandatory conditions:
 
-Unauthorized copying, distribution, modification, public display, or deployment of this Software via any medium is strictly prohibited.
+1. Mandatory Attribution & Reference:
+   Any academic paper, research publication, thesis, report, presentation, or article that uses, studies, cites, or benchmarks this Software, its architecture, or its datasets MUST provide clear and explicit attribution referencing the original author and repository:
+   - Author: Shyam Jaiswal
+   - Repository: https://github.com/jaiswalism/uniVeri
+   - Title: uniVeri: Academic Certificate Verification & Comparative Publication Architecture
 
-For permission requests or licensing inquiries, please contact:
+2. No Unreferenced Recreation or Plagiarism:
+   Recreating, cloning, re-hosting, or publishing this codebase, architecture, smart contracts, or benchmark datasets—in whole or in substantial part—without explicit reference, attribution, and citation to the original author is strictly prohibited. Passing off this work, its specifications, or its experimental data as original work is an infringement of copyright.
+
+3. No Commercial Use Without Permission:
+   Commercial exploitation, sale, sublicensing, or integration into proprietary commercial products or services is strictly prohibited without prior express written authorization from the copyright holder.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+For commercial licensing, permission, or inquiries:
 Shyam Jaiswal (hello@shyamjaiswal.in)
